@@ -19,7 +19,6 @@ export default function ContactPage() {
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
-    phone: "",
     issue: "",
     credentials: "",
   })
@@ -43,13 +42,24 @@ export default function ContactPage() {
         return
       }
 
-      // Simulate email sending
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to send email")
+      }
 
       // Show success modal
       toast({
-        title: "✅ Thank you!",
-        description: "Our team will contact you very soon.",
+        title: "✅ Sent Successfully!",
+        description: "Your message has been securely delivered to our team.",
         duration: 5000,
       })
 
@@ -57,14 +67,13 @@ export default function ContactPage() {
       setFormData({
         fullName: "",
         email: "",
-        phone: "",
         issue: "",
         credentials: "",
       })
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to send message. Please try again.",
+        description: error?.message || "Failed to send message. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -137,16 +146,7 @@ export default function ContactPage() {
                     <p className="text-xs text-muted-foreground">Please use a Gmail address for faster response</p>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="+1 (555) 123-4567"
-                      value={formData.phone}
-                      onChange={(e) => handleInputChange("phone", e.target.value)}
-                    />
-                  </div>
+
 
                   <div className="space-y-2">
                     <Label htmlFor="issue">Issue Description *</Label>
@@ -204,31 +204,12 @@ export default function ContactPage() {
                     <Mail className="h-5 w-5 text-primary mt-0.5" />
                     <div>
                       <p className="font-medium">Email Support</p>
-                      <p className="text-sm text-muted-foreground">theteambytehog@gmail.com</p>
+                      <p className="text-sm text-muted-foreground">documindai008@gmail.com</p>
                       <p className="text-xs text-muted-foreground mt-1">Response within 24 hours</p>
                     </div>
                   </div>
 
-                  <div className="flex items-start space-x-3">
-                    <Phone className="h-5 w-5 text-primary mt-0.5" />
-                    <div>
-                      <p className="font-medium">Phone Support</p>
-                      <p className="text-sm text-muted-foreground">+1 (555) 123-4567</p>
-                      <p className="text-xs text-muted-foreground mt-1">Mon-Fri, 9 AM - 6 PM EST</p>
-                    </div>
-                  </div>
 
-                  <div className="flex items-start space-x-3">
-                    <MapPin className="h-5 w-5 text-primary mt-0.5" />
-                    <div>
-                      <p className="font-medium">Office Location</p>
-                      <p className="text-sm text-muted-foreground">
-                        123 AI Innovation Drive
-                        <br />
-                        Tech Valley, CA 94000
-                      </p>
-                    </div>
-                  </div>
 
                   <div className="flex items-start space-x-3">
                     <Clock className="h-5 w-5 text-primary mt-0.5" />

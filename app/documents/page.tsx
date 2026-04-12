@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
-import { useAuth } from "@/components/auth-provider"
+import { useAuth, type DocumentMetadata } from "@/components/auth-provider"
 import { useToast } from "@/hooks/use-toast"
 import { FileText, File, Mail, Search, Trash2, Download, Eye, Calendar, HardDrive, Plus } from "lucide-react"
 
@@ -22,10 +22,9 @@ interface Document {
 }
 
 export default function DocumentsPage() {
-  const [documents, setDocuments] = useState<Document[]>([])
   const [searchTerm, setSearchTerm] = useState("")
-  const [filteredDocs, setFilteredDocs] = useState<Document[]>([])
-  const { user, loading } = useAuth()
+  const [filteredDocs, setFilteredDocs] = useState<DocumentMetadata[]>([])
+  const { user, loading, documents, setDocuments } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
 
@@ -34,20 +33,8 @@ export default function DocumentsPage() {
       router.push("/auth")
       return
     }
-
-    // Load documents from localStorage
-    if (typeof window !== "undefined") {
-      const savedDocs = localStorage.getItem("documents")
-      if (savedDocs) {
-        const docs = JSON.parse(savedDocs).map((doc: any) => ({
-          ...doc,
-          uploadedAt: new Date(doc.uploadedAt),
-        }))
-        setDocuments(docs)
-        setFilteredDocs(docs)
-      }
-    }
-  }, [user, loading, router])
+    setFilteredDocs(documents)
+  }, [user, loading, router, documents])
 
   useEffect(() => {
     // Filter documents based on search term
@@ -58,10 +45,6 @@ export default function DocumentsPage() {
   const deleteDocument = (id: string) => {
     const updatedDocs = documents.filter((doc) => doc.id !== id)
     setDocuments(updatedDocs)
-
-    if (typeof window !== "undefined") {
-      localStorage.setItem("documents", JSON.stringify(updatedDocs))
-    }
 
     toast({
       title: "Document Deleted",
@@ -165,7 +148,7 @@ export default function DocumentsPage() {
                   <Calendar className="h-5 w-5 text-purple-500" />
                   <div>
                     <p className="text-2xl font-bold">
-                      {documents.length > 0 ? documents[documents.length - 1].uploadedAt.toLocaleDateString() : "N/A"}
+                      {documents.length > 0 ? new Date(documents[documents.length - 1].uploadedAt).toLocaleDateString() : "N/A"}
                     </p>
                     <p className="text-sm text-muted-foreground">Last Upload</p>
                   </div>
@@ -230,7 +213,7 @@ export default function DocumentsPage() {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Uploaded</span>
-                        <span>{doc.uploadedAt.toLocaleDateString()}</span>
+                        <span>{new Date(doc.uploadedAt).toLocaleDateString()}</span>
                       </div>
 
                       <div className="flex items-center justify-between text-sm">

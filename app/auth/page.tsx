@@ -1,25 +1,29 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/hooks/use-toast"
-import { FileText, Building, User, Mail, Lock, Eye, EyeOff } from "lucide-react"
+import { FileText, Mail, Lock, Eye, EyeOff, ShieldCheck } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true)
-  const [userType, setUserType] = useState<"user" | "company">("user")
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  
+  // OTP State
+  const [showOtpInput, setShowOtpInput] = useState(false)
+  const [generatedOtp, setGeneratedOtp] = useState("")
+  const [inputOtp, setInputOtp] = useState("")
+  const [pendingUser, setPendingUser] = useState<any>(null)
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -27,40 +31,74 @@ export default function AuthPage() {
     confirmPassword: "",
   })
 
-  const { login, signup } = useAuth()
+  const { login, signup, checkCredentials, commitSession } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (inputOtp === generatedOtp && pendingUser) {
+      commitSession(pendingUser)
+      toast({
+        title: "✅ Security Verified",
+        description: "Logged in successfully!",
+      })
+      router.push("/")
+    } else {
+      toast({
+        title: "❌ Invalid OTP",
+        description: "The code you entered is incorrect. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleStandardSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
     try {
-      if (!isLogin && formData.password !== formData.confirmPassword) {
-        toast({
-          title: "Error",
-          description: "Passwords do not match",
-          variant: "destructive",
-        })
-        return
-      }
+      if (isLogin) {
+        // Step 1: Validate Credentials before sending OTP
+        const validUser = await checkCredentials(formData.email, formData.password)
+        if (validUser) {
+          // Generate 6-digit OTP
+          const newOtp = Math.floor(100000 + Math.random() * 900000).toString()
+          setGeneratedOtp(newOtp)
+          setPendingUser(validUser)
 
-      const success = isLogin
-        ? await login(formData.email, formData.password, userType)
-        : await signup(formData.email, formData.password, formData.name, userType)
+          // Send Email via Backend
+          await fetch('/api/auth/otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: formData.email, otp: newOtp })
+          })
 
-      if (success) {
-        toast({
-          title: "Success",
-          description: `${isLogin ? "Logged in" : "Account created"} successfully!`,
-        })
-        router.push("/")
+          setShowOtpInput(true)
+          toast({
+            title: "🔐 OTP Sent",
+            description: `We've sent a 6-digit security code to ${formData.email}.`,
+          })
+        } else {
+          toast({
+            title: "Error",
+            description: "Invalid email or password",
+            variant: "destructive",
+          })
+        }
       } else {
-        toast({
-          title: "Error",
-          description: `Failed to ${isLogin ? "login" : "create account"}`,
-          variant: "destructive",
-        })
+        // Signup Flow
+        if (formData.password !== formData.confirmPassword) {
+          toast({ title: "Error", description: "Passwords do not match", variant: "destructive" })
+          return
+        }
+        const success = await signup(formData.email, formData.password, formData.name)
+        if (success) {
+          toast({ title: "Success", description: "Account created successfully!" })
+          router.push("/")
+        } else {
+          toast({ title: "Error", description: "Failed to create account. Email might be in use.", variant: "destructive" })
+        }
       }
     } catch (error) {
       toast({
@@ -90,40 +128,64 @@ export default function AuthPage() {
           <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
             <span>by</span>
             <Badge variant="secondary" className="font-semibold">
-              The Byte Hog
+              Tanishk Gupta
             </Badge>
           </div>
         </div>
 
-        <Card className="shadow-lg">
+        <Card className="shadow-lg relative overflow-hidden">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center">{isLogin ? "Welcome Back" : "Create Account"}</CardTitle>
+            <CardTitle className="text-2xl text-center">
+              {showOtpInput ? "Two-Factor Verification" : isLogin ? "Welcome Back" : "Create Account"}
+            </CardTitle>
             <CardDescription className="text-center">
-              {isLogin ? "Sign in to your account to continue" : "Create a new account to get started"}
+              {showOtpInput 
+                ? "Check your email for the security code" 
+                : isLogin 
+                  ? "Sign in to your account to continue" 
+                  : "Create a new account to get started"}
             </CardDescription>
           </CardHeader>
 
           <CardContent>
-            <Tabs value={userType} onValueChange={(value) => setUserType(value as "user" | "company")}>
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="user" className="flex items-center space-x-2">
-                  <User className="h-4 w-4" />
-                  <span>Individual</span>
-                </TabsTrigger>
-                <TabsTrigger value="company" className="flex items-center space-x-2">
-                  <Building className="h-4 w-4" />
-                  <span>Company</span>
-                </TabsTrigger>
-              </TabsList>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
+            {showOtpInput ? (
+              <form onSubmit={handleOtpSubmit} className="space-y-6 animate-in slide-in-from-right-8">
+                <div className="flex justify-center mb-4">
+                  <div className="h-16 w-16 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center">
+                    <ShieldCheck className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Input
+                    type="text"
+                    maxLength={6}
+                    placeholder="• • • • • •"
+                    className="text-center text-3xl tracking-[1em] font-mono h-16 bg-muted/50"
+                    value={inputOtp}
+                    onChange={(e) => setInputOtp(e.target.value.replace(/[^0-9]/g, ''))}
+                    required
+                    autoFocus
+                  />
+                  <p className="text-xs text-center text-muted-foreground">Sent to {formData.email}</p>
+                </div>
+                <Button type="submit" className="w-full" size="lg">
+                  Verify & Proceed
+                </Button>
+                <div className="text-center mt-2">
+                  <Button type="button" variant="link" onClick={() => { setShowOtpInput(false); setInputOtp(""); }}>
+                    ← Go Back to Login
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleStandardSubmit} className="space-y-4 animate-in slide-in-from-left-8">
                 {!isLogin && (
                   <div className="space-y-2">
-                    <Label htmlFor="name">{userType === "company" ? "Company Name" : "Full Name"}</Label>
+                    <Label htmlFor="name">Full Name</Label>
                     <Input
                       id="name"
                       type="text"
-                      placeholder={userType === "company" ? "Enter company name" : "Enter your full name"}
+                      placeholder="Enter your full name"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       required
@@ -195,22 +257,22 @@ export default function AuthPage() {
                 )}
 
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Please wait..." : isLogin ? "Sign In" : "Create Account"}
+                  {loading ? "Please wait..." : isLogin ? "Secure Sign In" : "Create Account"}
                 </Button>
+                
+                <div className="mt-6 text-center">
+                  <Button type="button" variant="link" onClick={() => setIsLogin(!isLogin)} className="text-sm">
+                    {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+                  </Button>
+                </div>
               </form>
-            </Tabs>
-
-            <div className="mt-6 text-center">
-              <Button variant="link" onClick={() => setIsLogin(!isLogin)} className="text-sm">
-                {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
-              </Button>
-            </div>
+            )}
           </CardContent>
         </Card>
 
         <div className="text-center text-xs text-muted-foreground">
-          <p>© 2024 DocuMind AI - The Byte Hog</p>
-          <p>Secure authentication & data protection</p>
+          <p>© 2026 DocuMind AI - Tanishk Gupta</p>
+          <p>End-to-End Encrypted & 2FA Protected</p>
         </div>
       </div>
     </div>

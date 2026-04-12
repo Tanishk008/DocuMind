@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useDropzone } from "react-dropzone"
 import { Button } from "@/components/ui/button"
@@ -23,29 +23,18 @@ interface UploadedFile {
 }
 
 export default function UploadPage() {
-  const [files, setFiles] = useState<UploadedFile[]>([])
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
-  const { user, loading } = useAuth()
+  const { user, loading, files: globalFiles, setFiles: setGlobalFiles, documents, setDocuments, setCurrentStep } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
+  // Track raw File objects across renders without triggering re-renders
+  const rawFilesRef = useRef<File[]>([])
 
   useEffect(() => {
     if (!loading && !user) {
       router.push("/auth")
       return
-    }
-
-    // Load existing files from localStorage
-    if (typeof window !== "undefined") {
-      const savedFiles = localStorage.getItem("documents")
-      if (savedFiles) {
-        const parsedFiles = JSON.parse(savedFiles).map((file: any) => ({
-          ...file,
-          uploadedAt: new Date(file.uploadedAt),
-        }))
-        setFiles(parsedFiles)
-      }
     }
   }, [user, loading, router])
 
@@ -55,14 +44,14 @@ export default function UploadPage() {
       setUploadProgress(0)
 
       try {
+        const newDocMetadata: any[] = []
         for (const file of acceptedFiles) {
-          // Simulate file upload with progress
-          const uploadedFile: UploadedFile = {
+          const uploadedFile = {
             id: Math.random().toString(36).substr(2, 9),
             name: file.name,
             size: file.size,
             type: file.type,
-            url: URL.createObjectURL(file), // In production, this would be a real URL
+            url: URL.createObjectURL(file), // Still useful for preview if needed
             uploadedAt: new Date(),
           }
 
@@ -71,25 +60,22 @@ export default function UploadPage() {
             setUploadProgress(i)
             await new Promise((resolve) => setTimeout(resolve, 100))
           }
-
-          setFiles((prev) => {
-            const newFiles = [...prev, uploadedFile]
-            if (typeof window !== "undefined") {
-              localStorage.setItem("documents", JSON.stringify(newFiles))
-            }
-            return newFiles
-          })
+          newDocMetadata.push(uploadedFile)
         }
+
+        const updatedDocs = [...documents, ...newDocMetadata]
+        setDocuments(updatedDocs)
+
+        // Accumulate raw File objects in ref and persist to sessionStorage via context
+        rawFilesRef.current = [...rawFilesRef.current, ...acceptedFiles]
+        setGlobalFiles(rawFilesRef.current)
 
         toast({
           title: "Success",
           description: `${acceptedFiles.length} file(s) uploaded successfully!`,
         })
 
-        // Update current step
-        if (typeof window !== "undefined") {
-          localStorage.setItem("currentStep", "2")
-        }
+        setCurrentStep(2)
       } catch (error) {
         toast({
           title: "Error",
@@ -101,7 +87,7 @@ export default function UploadPage() {
         setUploadProgress(0)
       }
     },
-    [toast],
+    [toast, setGlobalFiles, documents, setDocuments, setCurrentStep],
   )
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -118,13 +104,8 @@ export default function UploadPage() {
   })
 
   const removeFile = (id: string) => {
-    setFiles((prev) => {
-      const newFiles = prev.filter((file) => file.id !== id)
-      if (typeof window !== "undefined") {
-        localStorage.setItem("documents", JSON.stringify(newFiles))
-      }
-      return newFiles
-    })
+    const updatedDocs = documents.filter((file) => file.id !== id)
+    setDocuments(updatedDocs)
 
     toast({
       title: "File Removed",
@@ -148,7 +129,7 @@ export default function UploadPage() {
   }
 
   const handleContinue = () => {
-    if (files.length === 0) {
+    if (documents.length === 0) {
       toast({
         title: "No Files",
         description: "Please upload at least one document to continue with DocuMind AI.",
@@ -182,7 +163,7 @@ export default function UploadPage() {
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold mb-4">Upload Your Documents</h1>
             <p className="text-muted-foreground">
-              Upload PDF, DOCX, or email files to start analyzing with DocuMind AI
+              Upload any PDF, DOCX, or text file and ask questions about its content
             </p>
           </div>
 
@@ -230,25 +211,25 @@ export default function UploadPage() {
           </Card>
 
           {/* Uploaded Files */}
-          {files.length > 0 && (
+          {documents.length > 0 && (
             <Card className="mb-8">
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <CheckCircle className="mr-2 h-5 w-5 text-green-500" />
-                  Uploaded Documents ({files.length})
+                  Uploaded Documents ({documents.length})
                 </CardTitle>
                 <CardDescription>Your uploaded documents are ready for analysis</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {files.map((file) => (
+                  {documents.map((file) => (
                     <div key={file.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center space-x-3">
                         {getFileIcon(file.type)}
                         <div>
                           <p className="font-medium">{file.name}</p>
                           <p className="text-sm text-muted-foreground">
-                            {formatFileSize(file.size)} • Uploaded {file.uploadedAt.toLocaleDateString()}
+                            {formatFileSize(file.size)} • Uploaded {new Date(file.uploadedAt).toLocaleDateString()}
                           </p>
                         </div>
                       </div>
@@ -282,7 +263,7 @@ export default function UploadPage() {
                     <span className="text-blue-600 dark:text-blue-400 font-bold">1</span>
                   </div>
                   <h3 className="font-semibold mb-2">Upload Documents</h3>
-                  <p className="text-sm text-muted-foreground">Upload your PDF, DOCX, or email files securely</p>
+                  <p className="text-sm text-muted-foreground">Upload your PDF, DOCX, or text files securely</p>
                 </div>
 
                 <div className="text-center">
@@ -306,7 +287,7 @@ export default function UploadPage() {
 
           {/* Continue Button */}
           <div className="text-center">
-            <Button size="lg" onClick={handleContinue} disabled={files.length === 0} className="px-8 py-3">
+            <Button size="lg" onClick={handleContinue} disabled={documents.length === 0} className="px-8 py-3">
               Continue to Questions
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>

@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
@@ -13,37 +13,174 @@ import { useToast } from "@/hooks/use-toast"
 import {
   CheckCircle,
   XCircle,
-  AlertCircle,
   FileText,
   RefreshCw,
   MessageSquare,
   Copy,
   Save,
   ArrowLeft,
-  Info,
-  TrendingUp,
   Brain,
   Clock,
+  AlertTriangle,
+  Lightbulb,
+  RotateCcw,
 } from "lucide-react"
 
 interface AnalysisResult {
   question: string
-  decision: "approved" | "rejected" | "conditional"
-  amount?: string
-  justification: string
-  clauses: string[]
+  answer: string
   confidence: number
-  keyFindings?: { [key: string]: string }
+  sources: string[]
+  foundInDocument: boolean
 }
+
+type ErrorType = "rate_limit" | "all_exhausted" | "no_text" | "generic" | null
 
 export default function ResultsPage() {
   const [results, setResults] = useState<AnalysisResult[]>([])
   const [loading, setLoading] = useState(true)
-  const [questions, setQuestions] = useState<any[]>([])
-  const [documents, setDocuments] = useState<any[]>([])
-  const { user, loading: authLoading } = useAuth()
+  const [errorType, setErrorType] = useState<ErrorType>(null)
+  const [errorMessage, setErrorMessage] = useState<string>("")
+  const [countdown, setCountdown] = useState<number | null>(null)
+  const countdownRef = useRef<NodeJS.Timeout | null>(null)
+  const autoRetryFiredRef = useRef(false)
+
+  const { user, loading: authLoading, getRestoredFiles, questions, setQuestions, documents, setCurrentStep } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
+
+  // --- Cleanup countdown on unmount ---
+  useEffect(() => {
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current)
+    }
+  }, [])
+
+  // --- Start countdown timer, optionally auto-retry when done ---
+  const startCountdown = useCallback((seconds: number, autoRetry: boolean, retryFn: () => void) => {
+    autoRetryFiredRef.current = false
+    setCountdown(seconds)
+    if (countdownRef.current) clearInterval(countdownRef.current)
+    countdownRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(countdownRef.current!)
+          if (autoRetry && !autoRetryFiredRef.current) {
+            autoRetryFiredRef.current = true
+            retryFn()
+          }
+          return null
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }, [])
+
+  const analyzeDocuments = useCallback(async (questionsData: any[], docsData: any[]) => {
+    setLoading(true)
+    setErrorType(null)
+    setErrorMessage("")
+    setCountdown(null)
+    if (countdownRef.current) clearInterval(countdownRef.current)
+
+    try {
+      const restoredFiles = await getRestoredFiles()
+
+      if (restoredFiles.length === 0) {
+        toast({
+          title: "No Files Found",
+          description: "Your files are no longer available. Please upload them again.",
+          variant: "destructive",
+        })
+        router.push("/upload")
+        return
+      }
+
+      const formData = new FormData()
+      restoredFiles.forEach((file: File) => formData.append("files", file))
+      formData.append("questions", JSON.stringify(questionsData.map((q) => q.text)))
+
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        body: formData,
+      })
+
+      const textResponse = await response.text()
+      let result: any
+      try {
+        result = JSON.parse(textResponse)
+      } catch (e) {
+        throw new Error(`Server returned non-JSON (${response.status}): ` + textResponse.substring(0, 200))
+      }
+
+      // --- Handle rate limits ---
+      if (response.status === 429) {
+        const waitSecs: number = result.retryAfterSeconds ?? 60
+        const isAllExhausted: boolean = result.allExhausted === true
+
+        if (isAllExhausted) {
+          setErrorType("all_exhausted")
+          setErrorMessage(result.message || "All AI models have hit their daily quota.")
+          // Show countdown to quota reset (could be hours — just show hrs/mins)
+          setCountdown(Math.min(waitSecs, 3600)) // cap display at 1 hour
+        } else {
+          setErrorType("rate_limit")
+          setErrorMessage(result.message || `Rate limited. Retrying in ${waitSecs} seconds…`)
+          // Auto-retry after the wait
+          startCountdown(waitSecs, true, () => analyzeDocuments(questionsData, docsData))
+        }
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error(result.error || result.message || "Failed to analyze document")
+      }
+
+      if (result.error === "NO_TEXT") {
+        setErrorType("no_text")
+        setErrorMessage("Could not extract any text from the uploaded document(s). Please try a different file format.")
+        return
+      }
+
+      if (result.answers && Array.isArray(result.answers)) {
+        setResults(result.answers)
+      } else {
+        throw new Error("Invalid response format from server")
+      }
+
+      // Track metric for Admin Dashboard
+      try {
+        if (user) {
+          fetch("/api/queries", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: user.email, increment: questionsData.length }),
+          })
+        }
+      } catch (e) {
+        console.error("Failed to log queries to DB", e)
+      }
+
+      toast({
+        title: "✅ Done!",
+        description: `Answered ${questionsData.length} question(s) from your document.`,
+      })
+    } catch (error: any) {
+      console.error("Analysis error:", error)
+      const isRateLimit = error?.message?.includes("429") || error?.message?.toLowerCase().includes("rate")
+      if (isRateLimit) {
+        setErrorType("rate_limit")
+        setErrorMessage("The AI API is busy. Retry in a moment.")
+        startCountdown(60, false, () => {})
+      } else {
+        setErrorType("generic")
+        setErrorMessage(error?.message || "An unexpected error occurred. Please try again.")
+      }
+    } finally {
+      setLoading(false)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getRestoredFiles, router, toast, user, startCountdown])
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -51,187 +188,30 @@ export default function ResultsPage() {
       return
     }
 
-    // Load questions and documents
-    if (typeof window !== "undefined") {
-      const savedQuestions = localStorage.getItem("questions")
-      const savedDocs = localStorage.getItem("documents")
-
-      if (!savedQuestions || !savedDocs) {
-        toast({
-          title: "Missing Data",
-          description: "Please complete the previous steps first.",
-          variant: "destructive",
-        })
-        router.push("/upload")
-        return
-      }
-
-      const questionsData = JSON.parse(savedQuestions)
-      const docsData = JSON.parse(savedDocs)
-
-      if (questionsData.length === 0) {
-        router.push("/query")
-        return
-      }
-
-      setQuestions(questionsData)
-      setDocuments(docsData)
-
-      // Start analysis
-      analyzeDocuments(questionsData, docsData)
-    }
-  }, [user, authLoading, router, toast])
-
-  const analyzeDocuments = async (questionsData: any[], docsData: any[]) => {
-    setLoading(true)
-
-    try {
-      const analysisResults: AnalysisResult[] = []
-
-      for (const question of questionsData) {
-        // Simulate AI analysis with realistic responses
-        const result = await simulateAIAnalysis(question.text, docsData)
-        analysisResults.push(result)
-
-        // Add delay to simulate processing
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-      }
-
-      setResults(analysisResults)
-
+    if (questions.length === 0 || documents.length === 0) {
       toast({
-        title: "Analysis Complete",
-        description: `Successfully analyzed ${questionsData.length} questions.`,
-      })
-    } catch (error) {
-      toast({
-        title: "Analysis Failed",
-        description: "Failed to analyze documents. Please try again.",
+        title: "Missing Data",
+        description: "Please complete the previous steps first.",
         variant: "destructive",
       })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const simulateAIAnalysis = async (question: string, docs: any[]): Promise<AnalysisResult> => {
-    const lowerQuestion = question.toLowerCase()
-
-    // Handle common spelling mistakes and rephrase questions
-    let processedQuestion = lowerQuestion
-    if (lowerQuestion.includes("transport") || lowerQuestion.includes("discharge")) {
-      processedQuestion = "transport from hospital to home after discharge"
-    } else if (lowerQuestion.includes("pre existing") || lowerQuestion.includes("preexisting")) {
-      processedQuestion = "What are the exclusions for pre-existing conditions?"
+      router.push("/upload")
+      return
     }
 
-    if (processedQuestion.includes("maternity") || processedQuestion.includes("pregnancy")) {
-      return {
-        question,
-        decision: "conditional",
-        amount: "Up to $50,000",
-        justification:
-          "Maternity expenses are covered under this policy with specific conditions. Coverage requires continuous enrollment for 24 months prior to conception. Benefits include prenatal care, delivery, and postnatal care.",
-        clauses: [
-          "HDFC Ergo: Section 4.2: Maternity Benefits - Coverage available after 24-month waiting period",
-          "HDFC Ergo: Section 4.2.1: Maximum benefit of $50,000 per pregnancy",
-          "HDFC Ergo: Section 4.2.2: Limited to two pregnancies during policy term",
-        ],
-        confidence: 92,
-        keyFindings: {
-          "Waiting Period": "24 months",
-          "Maximum Coverage": "$50,000",
-          "Pregnancy Limit": "2 pregnancies",
-        },
-      }
-    }
+    analyzeDocuments(questions, documents)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, authLoading])
 
-    if (processedQuestion.includes("cataract") || processedQuestion.includes("eye surgery")) {
-      return {
-        question,
-        decision: "conditional",
-        amount: "Up to $15,000",
-        justification:
-          "Cataract surgery is covered under the policy with a mandatory waiting period. The procedure must be deemed medically necessary by a qualified ophthalmologist.",
-        clauses: [
-          "HDFC Ergo: Section 6.3: Eye Care Benefits - Cataract surgery covered after 2-year waiting period",
-          "HDFC Ergo: Section 6.3.1: Maximum coverage of $15,000 per eye",
-          "HDFC Ergo: Section 6.3.2: Requires pre-authorization and medical necessity certification",
-        ],
-        confidence: 95,
-        keyFindings: {
-          "Waiting Period": "2 years",
-          "Coverage Per Eye": "$15,000",
-          Authorization: "Required",
-        },
-      }
-    }
-
-    // Default response for other questions
-    return {
-      question,
-      decision: "conditional",
-      justification:
-        "This query requires detailed policy review. Based on the available information, coverage may be available subject to policy terms and conditions. Please consult the full policy document for specific details.",
-      clauses: [
-        "General Terms and Conditions - Section 1.1",
-        "Coverage Limitations - Section 2.3",
-        "Claims Process - Section 9.1",
-      ],
-      confidence: 75,
-      keyFindings: {
-        Status: "Under Review",
-        "Action Required": "Policy Consultation",
-      },
-    }
-  }
-
-  const getDecisionIcon = (decision: string) => {
-    switch (decision) {
-      case "approved":
-        return <CheckCircle className="h-8 w-8 text-green-500" />
-      case "rejected":
-        return <XCircle className="h-8 w-8 text-red-500" />
-      case "conditional":
-        return <AlertCircle className="h-8 w-8 text-yellow-500" />
-      default:
-        return <AlertCircle className="h-8 w-8 text-gray-500" />
-    }
-  }
-
-  const getDecisionColor = (decision: string) => {
-    switch (decision) {
-      case "approved":
-        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 border-green-200"
-      case "rejected":
-        return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400 border-red-200"
-      case "conditional":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400 border-yellow-200"
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400 border-gray-200"
-    }
-  }
-
-  const getDecisionText = (decision: string) => {
-    switch (decision) {
-      case "approved":
-        return "✓ Approved"
-      case "rejected":
-        return "✗ Not Approved"
-      case "conditional":
-        return "⚠ Conditional"
-      default:
-        return "Under Review"
-    }
+  const handleRetry = () => {
+    if (countdownRef.current) clearInterval(countdownRef.current)
+    setCountdown(null)
+    analyzeDocuments(questions, documents)
   }
 
   const copyResult = (result: AnalysisResult) => {
-    const text = `Question: ${result.question}\nDecision: ${result.decision}\nConfidence: ${result.confidence}%\nExplanation: ${result.justification}`
+    const text = `Question: ${result.question}\n\nAnswer: ${result.answer}\n\nSources: ${result.sources.join(", ")}`
     navigator.clipboard.writeText(text)
-    toast({
-      title: "Copied",
-      description: "Result copied to clipboard",
-    })
+    toast({ title: "Copied", description: "Result copied to clipboard" })
   }
 
   const saveResult = (result: AnalysisResult) => {
@@ -244,43 +224,50 @@ export default function ResultsPage() {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-
-    toast({
-      title: "Saved",
-      description: "Result saved successfully",
-    })
+    toast({ title: "Saved", description: "Result saved successfully" })
   }
 
-  const askAnotherQuestion = () => {
-    router.push("/query")
-  }
+  const askAnotherQuestion = () => router.push("/query")
 
   const startOver = () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("questions")
-      localStorage.setItem("currentStep", "1")
-    }
+    setQuestions([])
+    setCurrentStep(1)
     router.push("/upload")
   }
 
   const clearResults = () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("questions")
-      localStorage.setItem("currentStep", "2")
-    }
+    setQuestions([])
+    setCurrentStep(2)
     router.push("/query")
   }
 
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary" />
       </div>
     )
   }
 
-  if (!user) {
-    return null
+  if (!user) return null
+
+  const avgConfidence = results.length
+    ? Math.round(results.reduce((acc, r) => acc + r.confidence, 0) / results.length)
+    : 0
+
+  // --- Format countdown for display ---
+  const formatCountdown = (secs: number) => {
+    if (secs >= 3600) {
+      const h = Math.floor(secs / 3600)
+      const m = Math.floor((secs % 3600) / 60)
+      return `${h}h ${m}m`
+    }
+    if (secs >= 60) {
+      const m = Math.floor(secs / 60)
+      const s = secs % 60
+      return `${m}m ${s}s`
+    }
+    return `${secs}s`
   }
 
   return (
@@ -291,26 +278,151 @@ export default function ResultsPage() {
         <div className="max-w-6xl mx-auto">
           <ProgressStepper />
 
+          {/* ─── LOADING STATE ─── */}
           {loading ? (
-            <div className="text-center py-12">
-              <div className="inline-flex items-center space-x-2">
-                <RefreshCw className="h-6 w-6 animate-spin text-primary" />
-                <span className="text-lg">Analyzing documents...</span>
+            <div className="text-center py-16">
+              <div className="inline-flex flex-col items-center space-y-4">
+                <div className="relative">
+                  <div className="h-16 w-16 rounded-full border-4 border-muted border-t-primary animate-spin" />
+                  <Brain className="h-6 w-6 text-primary absolute inset-0 m-auto" />
+                </div>
+                <p className="text-lg font-medium">Analyzing your document…</p>
+                <p className="text-sm text-muted-foreground max-w-sm">
+                  The AI is reading and processing your document. This may take 10–30 seconds.
+                </p>
               </div>
-              <p className="text-sm text-muted-foreground mt-2">This may take a few moments</p>
             </div>
+
+          ) : errorType ? (
+            /* ─── ERROR STATE ─── */
+            <div className="max-w-2xl mx-auto py-8">
+              {/* Error Card */}
+              <Card className={`border-2 mb-6 ${
+                errorType === "all_exhausted"
+                  ? "border-orange-400 bg-orange-50 dark:bg-orange-950/20"
+                  : "border-red-400 bg-red-50 dark:bg-red-950/20"
+              }`}>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${
+                      errorType === "all_exhausted" ? "bg-orange-100 dark:bg-orange-900/30" : "bg-red-100 dark:bg-red-900/30"
+                    }`}>
+                      <AlertTriangle className={`h-6 w-6 ${
+                        errorType === "all_exhausted" ? "text-orange-500" : "text-red-500"
+                      }`} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">
+                        {errorType === "rate_limit" && "⏳ AI Rate Limited"}
+                        {errorType === "all_exhausted" && "☕ Daily Quota Exhausted"}
+                        {errorType === "no_text" && "📄 No Text Found"}
+                        {errorType === "generic" && "⚠️ Analysis Failed"}
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">{errorMessage}</p>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+                  {/* Countdown timer for rate_limit */}
+                  {errorType === "rate_limit" && countdown !== null && (
+                    <div className="flex items-center gap-3 p-4 rounded-lg bg-background/60 border">
+                      <Clock className="h-5 w-5 text-primary animate-pulse" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">
+                          {countdown > 0
+                            ? `Auto-retrying in ${formatCountdown(countdown)}…`
+                            : "Retrying now…"}
+                        </p>
+                        <div className="w-full bg-muted rounded-full h-1.5 mt-2">
+                          <div
+                            className="bg-primary h-1.5 rounded-full transition-all duration-1000"
+                            style={{ width: `${Math.max(0, (countdown || 0) / 60 * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Quota reset info for all_exhausted */}
+                  {errorType === "all_exhausted" && (
+                    <div className="flex items-center gap-3 p-4 rounded-lg bg-background/60 border">
+                      <Clock className="h-5 w-5 text-orange-500" />
+                      <div>
+                        <p className="text-sm font-medium">Quota resets at midnight Pacific Time</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          All free-tier Gemini models share a daily quota. Add a second API key in your .env.local to get double the capacity.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
+                  <div className="flex flex-wrap gap-3 pt-2">
+                    <Button onClick={handleRetry} className="flex-1 sm:flex-none" disabled={loading}>
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      {countdown !== null && countdown > 0 ? "Retry Now (Skip Wait)" : "Retry"}
+                    </Button>
+                    <Button variant="outline" onClick={askAnotherQuestion} className="flex-1 sm:flex-none">
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      Change Questions
+                    </Button>
+                    <Button variant="outline" onClick={startOver} className="flex-1 sm:flex-none">
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Start Over
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Tips Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Lightbulb className="h-4 w-4 text-yellow-500" />
+                    Tips to avoid this issue
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary font-bold mt-0.5">1.</span>
+                      <span><strong>Ask one question at a time</strong> — fewer requests means lower chance of hitting limits.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary font-bold mt-0.5">2.</span>
+                      <span><strong>Add a second API key</strong> — set <code className="bg-muted px-1 rounded text-xs">GOOGLE_GENERATIVE_AI_API_KEY_2</code> in your <code className="bg-muted px-1 rounded text-xs">.env.local</code> file for double capacity.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary font-bold mt-0.5">3.</span>
+                      <span><strong>Wait a few minutes</strong> — per-minute rate limits reset quickly; only daily limits require waiting until midnight.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary font-bold mt-0.5">4.</span>
+                      <span><strong>Use a smaller document</strong> — very large documents use more tokens per request, exhausting quotas faster.</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </div>
+
           ) : (
+            /* ─── SUCCESS STATE ─── */
             <>
               {/* Header */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
                 <div>
-                  <h1 className="text-3xl font-bold mb-2">Your Results</h1>
-                  <p className="text-muted-foreground">Here's what we found in your documents</p>
+                  <h1 className="text-3xl font-bold mb-2">Your Answers</h1>
+                  <p className="text-muted-foreground">Here&apos;s what we found in your documents</p>
                 </div>
-                <div className="flex gap-3 mt-4 sm:mt-0">
+                <div className="flex flex-wrap gap-3 mt-4 sm:mt-0">
                   <Button onClick={askAnotherQuestion} variant="outline" size="lg">
                     <MessageSquare className="mr-2 h-4 w-4" />
                     Ask Another Query
+                  </Button>
+                  <Button onClick={handleRetry} variant="outline" size="lg">
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Re-Analyze
                   </Button>
                   <Button onClick={startOver} variant="outline" size="lg">
                     <ArrowLeft className="mr-2 h-4 w-4" />
@@ -323,7 +435,7 @@ export default function ResultsPage() {
               </div>
 
               {/* Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <Card>
                   <CardContent className="p-6">
                     <div className="flex items-center space-x-2">
@@ -342,19 +454,7 @@ export default function ResultsPage() {
                       <Brain className="h-5 w-5 text-purple-500" />
                       <div>
                         <p className="text-2xl font-bold">{questions.length}</p>
-                        <p className="text-sm text-muted-foreground">Questions</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                      <div>
-                        <p className="text-2xl font-bold">{results.filter((r) => r.decision === "approved").length}</p>
-                        <p className="text-sm text-muted-foreground">Approved</p>
+                        <p className="text-sm text-muted-foreground">Questions Asked</p>
                       </div>
                     </div>
                   </CardContent>
@@ -365,9 +465,7 @@ export default function ResultsPage() {
                     <div className="flex items-center space-x-2">
                       <Clock className="h-5 w-5 text-orange-500" />
                       <div>
-                        <p className="text-2xl font-bold">
-                          {Math.round(results.reduce((acc, r) => acc + r.confidence, 0) / results.length)}%
-                        </p>
+                        <p className="text-2xl font-bold">{avgConfidence}%</p>
                         <p className="text-sm text-muted-foreground">Avg Confidence</p>
                       </div>
                     </div>
@@ -382,10 +480,18 @@ export default function ResultsPage() {
                     <CardHeader className="bg-muted/30">
                       <div className="flex justify-between items-start">
                         <div className="flex items-center space-x-3">
-                          {getDecisionIcon(result.decision)}
+                          {result.foundInDocument ? (
+                            <CheckCircle className="h-7 w-7 text-green-500" />
+                          ) : (
+                            <XCircle className="h-7 w-7 text-red-400" />
+                          )}
                           <div>
-                            <CardTitle className="text-xl">Decision</CardTitle>
-                            <CardDescription>Based on your documents and question</CardDescription>
+                            <CardTitle className="text-xl">
+                              {result.foundInDocument ? "Answer Found" : "Not Found in Document"}
+                            </CardTitle>
+                            <p className="text-sm text-muted-foreground mt-0.5">
+                              Confidence: {result.confidence}%
+                            </p>
                           </div>
                         </div>
                         <div className="flex gap-2">
@@ -401,108 +507,57 @@ export default function ResultsPage() {
                       </div>
                     </CardHeader>
 
-                    <CardContent className="p-6">
-                      {/* Decision Summary */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <div className="text-center">
-                          <div
-                            className={`inline-flex items-center px-4 py-2 rounded-full border-2 font-semibold ${getDecisionColor(
-                              result.decision,
-                            )}`}
-                          >
-                            {getDecisionText(result.decision)}
-                          </div>
-                          <p className="text-sm text-muted-foreground mt-2">Final Decision</p>
-                        </div>
-
-                        <div className="text-center">
-                          <div className="text-2xl font-bold">{result.amount || "No Amount"}</div>
-                          <p className="text-sm text-muted-foreground">Amount Involved</p>
-                        </div>
-
-                        <div className="text-center">
-                          <div className="text-2xl font-bold">{result.confidence}%</div>
-                          <p className="text-sm text-muted-foreground">Confidence Level</p>
-                        </div>
-                      </div>
-
-                      <Separator className="my-6" />
-
-                      {/* Your Question */}
-                      <div className="mb-6">
-                        <div className="flex items-center mb-3">
-                          <MessageSquare className="mr-2 h-5 w-5" />
-                          <h3 className="text-lg font-semibold">Your Question</h3>
+                    <CardContent className="p-6 space-y-6">
+                      {/* Question */}
+                      <div>
+                        <div className="flex items-center mb-2">
+                          <MessageSquare className="mr-2 h-5 w-5 text-primary" />
+                          <h3 className="text-base font-semibold">Your Question</h3>
                         </div>
                         <div className="bg-muted/50 p-4 rounded-lg">
                           <p className="text-base">{result.question}</p>
                         </div>
                       </div>
 
-                      {/* Simple Explanation */}
-                      <div className="mb-6">
-                        <div className="flex items-center mb-3">
-                          <Info className="mr-2 h-5 w-5" />
-                          <h3 className="text-lg font-semibold">Simple Explanation</h3>
+                      <Separator />
+
+                      {/* Answer */}
+                      <div>
+                        <div className="flex items-center mb-2">
+                          <Brain className="mr-2 h-5 w-5 text-primary" />
+                          <h3 className="text-base font-semibold">Answer</h3>
                         </div>
-                        <div className="bg-muted/50 p-4 rounded-lg border-l-4 border-l-primary">
-                          <div className="flex items-start space-x-2">
-                            {result.decision === "rejected" && (
-                              <XCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
-                            )}
-                            {result.decision === "approved" && (
-                              <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                            )}
-                            {result.decision === "conditional" && (
-                              <AlertCircle className="h-5 w-5 text-yellow-500 mt-0.5 flex-shrink-0" />
-                            )}
-                            <div>
-                              <p className="font-semibold mb-1">
-                                {result.decision === "rejected" && "**Not Covered**"}
-                                {result.decision === "approved" && "**Covered**"}
-                                {result.decision === "conditional" && "**Conditionally Covered**"}
-                              </p>
-                              <p className="text-sm leading-relaxed">{result.justification}</p>
-                            </div>
-                          </div>
+                        <div
+                          className={`p-4 rounded-lg border-l-4 ${
+                            result.foundInDocument
+                              ? "bg-green-50 dark:bg-green-900/10 border-l-green-500"
+                              : "bg-red-50 dark:bg-red-900/10 border-l-red-400"
+                          }`}
+                        >
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{result.answer}</p>
                         </div>
                       </div>
 
-                      {/* Key Findings */}
-                      {result.keyFindings && (
-                        <div className="mb-6">
-                          <div className="flex items-center mb-3">
-                            <TrendingUp className="mr-2 h-5 w-5" />
-                            <h3 className="text-lg font-semibold">What We Found in Your Question</h3>
+                      {/* Sources */}
+                      {result.sources.length > 0 && (
+                        <div>
+                          <div className="flex items-center mb-2">
+                            <FileText className="mr-2 h-5 w-5 text-primary" />
+                            <h3 className="text-base font-semibold">Source Documents</h3>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {Object.entries(result.keyFindings).map(([key, value]) => (
-                              <div key={key} className="bg-muted/30 p-3 rounded-lg">
-                                <div className="flex justify-between items-center">
-                                  <span className="font-medium text-sm">{key}</span>
-                                  <span className="text-sm text-muted-foreground">{value}</span>
-                                </div>
-                              </div>
+                          <div className="flex flex-wrap gap-2">
+                            {result.sources.map((src, i) => (
+                              <span
+                                key={i}
+                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-sm font-medium"
+                              >
+                                <FileText className="h-3 w-3" />
+                                {src}
+                              </span>
                             ))}
                           </div>
                         </div>
                       )}
-
-                      {/* Referenced Clauses */}
-                      <div>
-                        <div className="flex items-center mb-3">
-                          <FileText className="mr-2 h-5 w-5" />
-                          <h3 className="text-lg font-semibold">Referenced Policy Clauses</h3>
-                        </div>
-                        <div className="space-y-2">
-                          {result.clauses.map((clause, clauseIndex) => (
-                            <div key={clauseIndex} className="flex items-start space-x-2 p-3 bg-muted/30 rounded-lg">
-                              <FileText className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                              <span className="text-sm">{clause}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
                     </CardContent>
                   </Card>
                 ))}

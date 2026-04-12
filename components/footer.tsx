@@ -10,7 +10,7 @@ export function Footer() {
               queries and get instant, accurate answers with complete contextual understanding.
             </p>
             <div className="space-y-2 text-sm text-muted-foreground">
-              <p>📧 Email: theteambytehog@gmail.com</p>
+              <p>📧 Email: documindai008@gmail.com</p>
               <p>🌐 Website: documind-ai.com</p>
               <p>📱 Support: Available 24/7</p>
             </div>
@@ -56,7 +56,7 @@ export function Footer() {
 
         <div className="border-t border-border/40 mt-8 pt-8 text-center">
           <p className="text-sm text-muted-foreground">
-            © 2024 DocuMind AI - Developed by <span className="font-semibold text-primary">The Byte Hog</span>. All
+            © 2026 DocuMind AI - Developed by <span className="font-semibold text-primary">Tanishk Gupta</span>. All
             rights reserved.
           </p>
           <p className="text-xs text-muted-foreground mt-2">

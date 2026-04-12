@@ -1,7 +1,7 @@
 "use client"
 
 import { Check } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useAuth } from "@/components/auth-provider"
 
 const steps = [
   { id: 1, name: "Upload Document", description: "Upload your document" },
@@ -10,14 +10,7 @@ const steps = [
 ]
 
 export function ProgressStepper() {
-  const [currentStep, setCurrentStep] = useState(0)
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const step = Number.parseInt(localStorage.getItem("currentStep") || "0")
-      setCurrentStep(step)
-    }
-  }, [])
+  const { currentStep } = useAuth()
 
   return (
     <div className="w-full max-w-3xl mx-auto mb-8">

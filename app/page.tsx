@@ -23,7 +23,7 @@ import {
 } from "lucide-react"
 
 export default function HomePage() {
-  const { user, loading } = useAuth()
+  const { user, loading, setCurrentStep } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -33,9 +33,7 @@ export default function HomePage() {
   }, [user, loading, router])
 
   const handleGetStarted = () => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("currentStep", "1")
-    }
+    setCurrentStep(1)
     router.push("/upload")
   }
 
@@ -69,8 +67,8 @@ export default function HomePage() {
             </h1>
 
             <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-              Transform your document analysis with cutting-edge AI technology. Upload PDFs, DOCX, or emails and get
-              intelligent, contextual answers with complete clause-level explanations and insights.
+              Transform the way you interact with documents. Upload any PDF, DOCX, or text file and instantly get
+              accurate, context-aware answers drawn directly from your document's content.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
@@ -108,7 +106,7 @@ export default function HomePage() {
                   <BarChart3 className="h-8 w-8 text-primary" />
                 </div>
                 <h3 className="font-semibold mb-2">3. Get Results</h3>
-                <p className="text-sm text-muted-foreground">Detailed analysis with clause references</p>
+                <p className="text-sm text-muted-foreground">Instant answers sourced directly from your document</p>
               </div>
             </div>
           </div>
@@ -130,7 +128,7 @@ export default function HomePage() {
                   <Brain className="h-12 w-12 text-primary mb-4" />
                   <CardTitle>AI-Powered Analysis</CardTitle>
                   <CardDescription>
-                    Advanced GPT-4 integration for intelligent document understanding and query processing
+                    Powered by Gemini for intelligent, context-aware document understanding and Q&amp;A
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -156,14 +154,14 @@ export default function HomePage() {
                   <Search className="h-12 w-12 text-primary mb-4" />
                   <CardTitle>Semantic Search</CardTitle>
                   <CardDescription>
-                    Vector-based search technology for finding the most relevant information quickly
+                    Vector-based semantic search to find the most relevant passages in any document
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-center">
                       <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                      Clause-level matching
+                      Passage-level matching
                     </li>
                     <li className="flex items-center">
                       <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
@@ -285,9 +283,9 @@ export default function HomePage() {
         {/* CTA Section */}
         <section className="py-20 px-4 sm:px-6 lg:px-8 bg-primary/5">
           <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-6">Ready to Experience Advanced Document Intelligence?</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-6">Ready to Ask Questions About Any Document?</h2>
             <p className="text-xl text-muted-foreground mb-8">
-              Join thousands of users who trust DocuMind AI for intelligent document processing and analysis
+              Upload any document — reports, contracts, manuals, research papers — and get instant answers
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

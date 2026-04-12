@@ -2,8 +2,8 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Menu, X, FileText, LogOut, User } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import { Menu, X, FileText, LogOut, User, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/components/auth-provider"
@@ -12,16 +12,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
-  const { user, logout } = useAuth()
-
-  const getCurrentStep = () => {
-    if (typeof window !== "undefined") {
-      return Number.parseInt(localStorage.getItem("currentStep") || "0")
-    }
-    return 0
-  }
-
-  const currentStep = getCurrentStep()
+  const router = useRouter()
+  const { user, logout, currentStep } = useAuth()
 
   const navItems = [
     { name: "Home", href: "/", step: 0 },
@@ -86,7 +78,11 @@ export function Navbar() {
               <DropdownMenuContent align="end">
                 <DropdownMenuItem disabled>
                   <User className="mr-2 h-4 w-4" />
-                  {user.name} ({user.type})
+                  {user.name} ({user.role})
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push(user.role === 'admin' ? '/admin' : '/profile')}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  {user.role === 'admin' ? 'Admin Dashboard' : 'My Profile'}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={logout}>
                   <LogOut className="mr-2 h-4 w-4" />

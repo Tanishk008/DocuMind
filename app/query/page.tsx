@@ -22,25 +22,23 @@ interface Question {
 }
 
 const sampleQuestions = [
-  "How does DocuMind AI ensure the confidentiality of uploaded documents?",
-  "Can DocuMind AI handle documents in multiple languages?",
-  "What types of documents are best suited for analysis by DocuMind AI?",
-  "How accurate is DocuMind AI in extracting information from complex documents?",
-  "Does this policy cover maternity expenses, and what are the conditions?",
-  "What is the waiting period for cataract surgery?",
-  "Are the medical expenses for an organ donor covered under this policy?",
-  "What are the exclusions for pre-existing conditions?",
-  "Is there coverage for mental health treatments?",
-  "What is the maximum claim amount per year?",
-  "Are dental procedures covered under this policy?",
-  "What documents are required for claim processing?",
+  "What is the main topic or purpose of this document?",
+  "Summarize the key points mentioned in this document.",
+  "What are the terms and conditions described in this document?",
+  "Who are the parties involved in this document?",
+  "What are the important dates or deadlines mentioned?",
+  "What actions or steps are required according to this document?",
+  "Are there any exclusions or limitations mentioned?",
+  "What is the total amount or value discussed in this document?",
+  "What are the key obligations or responsibilities described?",
+  "Is there a definition or explanation of any specific terms?",
+  "What conclusions or recommendations are made in this document?",
+  "What evidence or supporting data is provided in this document?",
 ]
 
 export default function QueryPage() {
-  const [questions, setQuestions] = useState<Question[]>([])
   const [currentQuestion, setCurrentQuestion] = useState("")
-  const [documents, setDocuments] = useState<any[]>([])
-  const { user, loading } = useAuth()
+  const { user, loading, documents, questions, setQuestions, setCurrentStep } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
 
@@ -54,41 +52,15 @@ export default function QueryPage() {
       return
     }
 
-    // Load documents and questions from localStorage
-    if (typeof window !== "undefined") {
-      const savedDocs = localStorage.getItem("documents")
-      const savedQuestions = localStorage.getItem("questions")
-
-      if (savedDocs) {
-        const docs = JSON.parse(savedDocs)
-        setDocuments(docs)
-
-        if (docs.length === 0) {
-          toast({
-            title: "No Documents",
-            description: "Please upload documents first.",
-            variant: "destructive",
-          })
-          router.push("/upload")
-          return
-        }
-      } else {
-        router.push("/upload")
-        return
-      }
-
-      if (savedQuestions) {
-        const parsedQuestions = JSON.parse(savedQuestions).map(
-          (question: { id: string; text: string; timestamp: string }) => ({
-            id: question.id,
-            text: question.text,
-            timestamp: new Date(question.timestamp),
-          }),
-        )
-        setQuestions(parsedQuestions)
-      }
+    if (documents.length === 0) {
+      toast({
+        title: "No Documents",
+        description: "Please upload documents first.",
+        variant: "destructive",
+      })
+      router.push("/upload")
     }
-  }, [user, loading, router, toast])
+  }, [user, loading, router, toast, documents])
 
   const addQuestion = () => {
     if (!currentQuestion.trim()) {
@@ -110,10 +82,6 @@ export default function QueryPage() {
     setQuestions(updatedQuestions)
     setCurrentQuestion("")
 
-    if (typeof window !== "undefined") {
-      localStorage.setItem("questions", JSON.stringify(updatedQuestions))
-    }
-
     toast({
       title: "Question Added",
       description: "Your question has been added to the queue.",
@@ -123,10 +91,6 @@ export default function QueryPage() {
   const removeQuestion = (id: string) => {
     const updatedQuestions = questions.filter((q) => q.id !== id)
     setQuestions(updatedQuestions)
-
-    if (typeof window !== "undefined") {
-      localStorage.setItem("questions", JSON.stringify(updatedQuestions))
-    }
   }
 
   const handleAnalyze = () => {
@@ -139,11 +103,7 @@ export default function QueryPage() {
       return
     }
 
-    // Update current step
-    if (typeof window !== "undefined") {
-      localStorage.setItem("currentStep", "3")
-    }
-
+    setCurrentStep(3)
     router.push("/results")
   }
 
@@ -212,7 +172,7 @@ export default function QueryPage() {
             <CardContent>
               <div className="space-y-4">
                 <Textarea
-                  placeholder="e.g., Does this policy cover maternity expenses, and what are the conditions?"
+                  placeholder="e.g., What are the key points discussed in this document?"
                   value={currentQuestion}
                   onChange={(e) => setCurrentQuestion(e.target.value)}
                   onKeyDown={handleKeyPress}
@@ -275,7 +235,7 @@ export default function QueryPage() {
                             Q{index + 1}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
-                            {question.timestamp.toLocaleTimeString()}
+                            {new Date(question.timestamp).toLocaleTimeString()}
                           </span>
                         </div>
                         <p className="text-sm break-words">{question.text}</p>

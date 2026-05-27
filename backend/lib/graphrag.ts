@@ -61,7 +61,7 @@ export async function extractGraphFromChunk(
 ): Promise<{ nodes: GraphNode[]; edges: GraphEdge[] }> {
   try {
     const chain = EXTRACTION_PROMPT.pipe(llm)
-    const result = await chain.invoke({ text: chunk })
+    const result = (await chain.invoke({ text: chunk })) as any
     let responseText = String(result.content ?? "").trim()
 
     // Clean up code fences if the LLM outputted them despite instructions
@@ -189,7 +189,7 @@ export function consolidateGraphs(
 export async function extractSeedEntities(question: string, llm: any): Promise<string[]> {
   try {
     const chain = SEED_PROMPT.pipe(llm)
-    const result = await chain.invoke({ query: question })
+    const result = (await chain.invoke({ query: question })) as any
     const responseText = String(result.content ?? "").trim()
 
     if (!responseText) return []

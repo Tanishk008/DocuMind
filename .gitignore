@@ -2,11 +2,14 @@
 node_modules/
 **/node_modules/
 
-# Next.js build output
+# Next.js and backend build outputs
 .next/
 **/.next/
 out/
 build/
+dist/
+**/dist/
+
 
 # Environment variables (DO NOT COMMIT)
 .env

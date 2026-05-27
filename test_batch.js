@@ -4,7 +4,7 @@ const { ChatPromptTemplate } = require("@langchain/core/prompts");
 async function test() {
   const llm = new ChatGoogleGenerativeAI({
     apiKey: "AIzaSyBM1ZZofDYWHyv2B7gJA9YXdI2oayOHy4c",
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-1.5-flash",
     temperature: 0.2,
     maxRetries: 0,
   });

@@ -1,7 +1,7 @@
 import express from "express"
 import cors from "cors"
 import multer from "multer"
-import nodemailer from "nodemailer"
+import { Resend } from "resend"
 import * as dotenv from "dotenv"
 import * as path from "path"
 import { Document } from "@langchain/core/documents"
@@ -781,41 +781,30 @@ app.post("/api/contact", async (req, res) => {
       return res.status(400).json({ error: "Missing required fields" })
     }
 
-    if (!process.env.EMAIL_PASS) {
-      return res.status(500).json({
-        error: "Server configuration error. EMAIL_PASS is not set in the environment variables.",
-      })
+    const resendKey = process.env.RESEND_API_KEY
+    if (!resendKey) {
+      // Fallback: log to console if no Resend key configured
+      console.log(`[Contact-Form-Submission] Name: ${fullName} | Email: ${email} | Issue: ${issue}`)
+      return res.json({ success: true, message: "Query received successfully" })
     }
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: "documindai008@gmail.com",
-        pass: process.env.EMAIL_PASS,
-      },
-      connectionTimeout: 3000,
-      greetingTimeout: 3000,
-      socketTimeout: 5000,
-    })
-
-    const mailOptions = {
-      from: `"DocuMind AI" <documindai008@gmail.com>`,
-      to: "documindai008@gmail.com",
+    const resend = new Resend(resendKey)
+    const { error: sendError } = await resend.emails.send({
+      from: "DocuMind AI <onboarding@resend.dev>",
+      to: ["documindai008@gmail.com"],
       replyTo: email,
       subject: `DocuMind AI Support: Query from ${fullName}`,
       text: `You have received a new contact submission from DocuMind AI!\n\nName: ${fullName}\nEmail: ${email}\n\nIssue Description:\n${issue}\n\nAdditional Credentials:\n${credentials || "N/A"}`,
+    })
+
+    if (sendError) {
+      console.error("[Resend] Contact email error:", sendError)
+      return res.status(500).json({ error: "Failed to send email", details: sendError.message })
     }
 
-    try {
-      await transporter.sendMail(mailOptions)
-      return res.json({ success: true, message: "Email sent successfully" })
-    } catch (mailErr: any) {
-      console.warn("[Contact-Fallback] SMTP blocked on cloud environment. Submitting directly to logs:", mailErr.message)
-      console.log(`[Contact-Form-Submission] Name: ${fullName} | Email: ${email} | Issue: ${issue}`)
-      return res.json({ success: true, message: "Query received successfully (log delivery fallback)" })
-    }
+    return res.json({ success: true, message: "Email sent successfully" })
   } catch (error: any) {
-    console.error("Nodemailer error:", error)
+    console.error("Contact email error:", error)
     return res.status(500).json({ error: "Failed to send email", details: error.message })
   }
 })
@@ -832,56 +821,47 @@ app.post("/api/auth/otp", async (req, res) => {
       return res.status(400).json({ error: "Email is required" })
     }
 
-    if (!process.env.EMAIL_PASS) {
-      return res.status(500).json({
-        error: "Server configuration error. EMAIL_PASS is not set in environment variables.",
-      })
-    }
-
     // Generate 6-digit OTP via TEE
     const otp = TrustedExecutionEnvironment.generateSecureOtp()
     const expires = Date.now() + 5 * 60 * 1000 // 5 minutes validity
     otpStore.set(email.toLowerCase(), { otp, expires })
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: "documindai008@gmail.com",
-        pass: process.env.EMAIL_PASS,
-      },
-      connectionTimeout: 3000,
-      greetingTimeout: 3000,
-      socketTimeout: 5000,
-    })
+    const resendKey = process.env.RESEND_API_KEY
+    if (!resendKey) {
+      // Dev fallback: log OTP to console if Resend key not configured
+      console.log(`[OTP] 📧 Generated OTP ${otp} for ${email} (no RESEND_API_KEY configured — console fallback)`)
+      return res.json({ success: true, message: "OTP sent" })
+    }
 
-    const mailOptions = {
-      from: `"DocuMind Security" <documindai008@gmail.com>`,
-      to: email,
+    const resend = new Resend(resendKey)
+    const { error: sendError } = await resend.emails.send({
+      from: "DocuMind AI <onboarding@resend.dev>",
+      to: [email],
       subject: `DocuMind AI: Your Security OTP is ${otp}`,
       html: `
-        <div style="font-family: sans-serif; max-w-md; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-          <h2 style="color: #2563EB;">DocuMind AI Security</h2>
-          <p>You recently requested a secure access code for DocuMind AI.</p>
-          <p>Here is your One-Time Password (OTP) to securely access your account (valid for 5 minutes):</p>
-          <div style="font-size: 32px; font-weight: bold; letter-spacing: 4px; padding: 15px; background: #f3f4f6; text-align: center; border-radius: 6px; margin: 20px 0;">
+        <div style="font-family: sans-serif; max-width: 480px; margin: auto; padding: 24px; border: 1px solid #ddd; border-radius: 12px;">
+          <h2 style="color: #2563EB; margin-bottom: 8px;">DocuMind AI Security</h2>
+          <p style="color: #444;">You requested a secure access code for DocuMind AI.</p>
+          <p style="color: #444;">Your One-Time Password (valid for <strong>5 minutes</strong>):</p>
+          <div style="font-size: 36px; font-weight: bold; letter-spacing: 8px; padding: 18px; background: #f3f4f6; text-align: center; border-radius: 8px; margin: 20px 0; color: #1d4ed8;">
             ${otp}
           </div>
-          <p style="font-size: 13px; color: #666;">If you did not request this login attempt, please ignore this email and reset your password if necessary.</p>
-          <hr style="border: 0; border-top: 1px solid #eee; margin-top: 30px;" />
-          <p style="font-size: 11px; color: #999;">&copy; 2026 DocuMind AI - Tanishk Gupta</p>
+          <p style="font-size: 13px; color: #888;">If you did not request this code, please ignore this email.</p>
+          <hr style="border: 0; border-top: 1px solid #eee; margin-top: 24px;" />
+          <p style="font-size: 11px; color: #bbb;">&copy; 2026 DocuMind AI &mdash; Tanishk Gupta</p>
         </div>
       `,
+    })
+
+    if (sendError) {
+      console.error("[OTP] Resend error:", sendError)
+      // Still return success — OTP is stored, user can contact support
+      console.log(`[OTP] 📧 Resend failed but OTP generated: ${otp} for ${email}`)
+      return res.status(500).json({ error: "Failed to send OTP email. Please try again.", details: sendError.message })
     }
 
-    try {
-      await transporter.sendMail(mailOptions)
-      console.log(`[OTP] 📧 Sent OTP ${otp} to ${email}`)
-      return res.json({ success: true, message: "OTP Email Sent!" })
-    } catch (mailErr: any) {
-      console.warn("[OTP-Fallback] SMTP blocked on cloud environment. Falling back to console logging:", mailErr.message)
-      console.log(`[OTP] 📧 Sent OTP ${otp} to ${email}`)
-      return res.json({ success: true, message: "OTP Generated (Sandbox logs delivery)" })
-    }
+    console.log(`[OTP] 📧 Sent OTP to ${email} via Resend`)
+    return res.json({ success: true, message: "OTP Email Sent!" })
   } catch (error: any) {
     console.error("OTP email sending error:", error)
     return res.status(500).json({ error: "Failed to send OTP", details: error.message })

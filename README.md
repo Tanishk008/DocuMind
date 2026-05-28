@@ -6,6 +6,14 @@ Designed as a modern monorepo, the platform splits into an **Express + Node.js T
 
 ---
 
+## 🌐 Live Deployments
+
+Experience the fully operational platform live on the cloud:
+* 🌐 **Live Web Application**: [https://documind-frontend-cl5e.onrender.com](https://documind-frontend-cl5e.onrender.com)
+* ⚡ **Live API Service (Backend)**: [https://documind-backend-lrea.onrender.com](https://documind-backend-lrea.onrender.com)
+
+---
+
 ## 🚀 Key Architectural Highlights
 
 *   **Graph RAG Engine**: Generates a rich, interactive Knowledge Graph by extracting entities (nodes) and relations (edges) from document chunks using LangChain and LLMs, resolving and deduplicating duplicates.
@@ -114,23 +122,25 @@ Follow these steps to run both the backend API and the frontend client locally o
 
 ## 🌐 Render Deployment Strategy
 
-DocuMind can be deployed on Render as two separate **Web Services** from your single GitHub repository by utilizing the **Root Directory** configuration setting.
+DocuMind is successfully deployed on Render as two separate **Web Services** from this single GitHub repository by utilizing the **Root Directory** configuration setting.
 
-### 1. Deploying the Backend (`documind-backend`)
+### 1. Backend Service (`documind-backend`)
+*   **Live API Endpoint**: [https://documind-backend-lrea.onrender.com](https://documind-backend-lrea.onrender.com)
 *   **Service Type**: Web Service
 *   **Root Directory**: `backend`
 *   **Language**: `Node`
 *   **Build Command**: `npm install --legacy-peer-deps && npm run build`
-*   **Start Command**: `node dist/server.js`
-*   **Environment Variables**: Define `PORT` (5001), `MONGO_URI`, `GROQ_API_KEY`, `EMAIL_PASS` in the Render Environment settings.
+*   **Start Command**: `npm start` (Runs optimized `node dist/server.js`)
+*   **Environment Variables**: Configured `PORT` (5001), `MONGO_URI`, `GROQ_API_KEY`, `EMAIL_PASS`, and `OPENROUTER_API_KEY`.
 
-### 2. Deploying the Frontend (`documind-frontend`)
+### 2. Frontend Application (`documind-frontend`)
+*   **Live Web URL**: [https://documind-frontend-cl5e.onrender.com](https://documind-frontend-cl5e.onrender.com)
 *   **Service Type**: Web Service
 *   **Root Directory**: `frontend`
 *   **Language**: `Node`
 *   **Build Command**: `npm install --legacy-peer-deps && npm run build`
-*   **Start Command**: `npm run start`
-*   **Environment Variables**: Define `NEXT_PUBLIC_BACKEND_URL` (points to your live Render backend URL: `https://your-backend.onrender.com`), along with your Pinecone, Cohere, and Groq keys.
+*   **Start Command**: `npm start`
+*   **Environment Variables**: Configured `NEXT_PUBLIC_BACKEND_URL` (pointing to `https://documind-backend-lrea.onrender.com`), `MONGO_URI`, `EMAIL_PASS`, and your `GROQ_API_KEY`, `PINECONE_API_KEY`, and `COHERE_API_KEY`.
 
 ---
 

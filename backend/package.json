@@ -5,12 +5,12 @@
   "main": "server.ts",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only server.ts",
-    "start": "ts-node server.ts",
+    "start": "node dist/server.js",
     "build": "tsc"
   },
   "dependencies": {
-    "@langchain/core": "^1.1.38",
-    "@langchain/groq": "^1.2.0",
+    "@langchain/core": "^0.3.38",
+    "@langchain/groq": "^0.2.4",
     "@types/nodemailer": "^8.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

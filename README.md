@@ -10,7 +10,7 @@ Designed as a modern monorepo, the platform splits into an **Express + Node.js T
 
 Experience the fully operational platform live on the cloud:
 * 🌐 **Live Web Application**: [https://documind-frontend-cl5e.onrender.com](https://documind-frontend-cl5e.onrender.com)
-* ⚡ **Live API Service (Backend)**: [https://documind-backend-lrea.onrender.com](https://documind-backend-lrea.onrender.com)
+* ⚡ **Live API Service (Backend)**: [https://documind-production-b57a.up.railway.app](https://documind-production-b57a.up.railway.app)
 
 ---
 
@@ -125,7 +125,7 @@ Follow these steps to run both the backend API and the frontend client locally o
 DocuMind is successfully deployed on Render as two separate **Web Services** from this single GitHub repository by utilizing the **Root Directory** configuration setting.
 
 ### 1. Backend Service (`documind-backend`)
-*   **Live API Endpoint**: [https://documind-backend-lrea.onrender.com](https://documind-backend-lrea.onrender.com)
+*   **Live API Endpoint**: [https://documind-production-b57a.up.railway.app](https://documind-production-b57a.up.railway.app)
 *   **Service Type**: Web Service
 *   **Root Directory**: `backend`
 *   **Language**: `Node`
@@ -140,7 +140,7 @@ DocuMind is successfully deployed on Render as two separate **Web Services** fro
 *   **Language**: `Node`
 *   **Build Command**: `npm install --legacy-peer-deps && npm run build`
 *   **Start Command**: `npm start`
-*   **Environment Variables**: Configured `NEXT_PUBLIC_BACKEND_URL` (pointing to `https://documind-backend-lrea.onrender.com`), `MONGO_URI`, `EMAIL_PASS`, and your `GROQ_API_KEY`, `PINECONE_API_KEY`, and `COHERE_API_KEY`.
+*   **Environment Variables**: Configured `NEXT_PUBLIC_BACKEND_URL` (pointing to `https://documind-production-b57a.up.railway.app`), `MONGO_URI`, `EMAIL_PASS`, and your `GROQ_API_KEY`, `PINECONE_API_KEY`, and `COHERE_API_KEY`.
 
 ---
 

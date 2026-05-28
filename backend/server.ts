@@ -1,7 +1,7 @@
 import express from "express"
 import cors from "cors"
 import multer from "multer"
-import { Resend } from "resend"
+import nodemailer from "nodemailer"
 import * as dotenv from "dotenv"
 import * as path from "path"
 import { Document } from "@langchain/core/documents"
@@ -781,26 +781,26 @@ app.post("/api/contact", async (req, res) => {
       return res.status(400).json({ error: "Missing required fields" })
     }
 
-    const resendKey = process.env.RESEND_API_KEY
-    if (!resendKey) {
-      // Fallback: log to console if no Resend key configured
+    if (!process.env.EMAIL_PASS) {
       console.log(`[Contact-Form-Submission] Name: ${fullName} | Email: ${email} | Issue: ${issue}`)
-      return res.json({ success: true, message: "Query received successfully" })
+      return res.json({ success: true, message: "Query received" })
     }
 
-    const resend = new Resend(resendKey)
-    const { error: sendError } = await resend.emails.send({
-      from: "DocuMind AI <onboarding@resend.dev>",
-      to: ["documindai008@gmail.com"],
-      replyTo: email,
-      subject: `DocuMind AI Support: Query from ${fullName}`,
-      text: `You have received a new contact submission from DocuMind AI!\n\nName: ${fullName}\nEmail: ${email}\n\nIssue Description:\n${issue}\n\nAdditional Credentials:\n${credentials || "N/A"}`,
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: "documindai008@gmail.com",
+        pass: process.env.EMAIL_PASS,
+      },
     })
 
-    if (sendError) {
-      console.error("[Resend] Contact email error:", sendError)
-      return res.status(500).json({ error: "Failed to send email", details: sendError.message })
-    }
+    await transporter.sendMail({
+      from: `"DocuMind AI" <documindai008@gmail.com>`,
+      to: "documindai008@gmail.com",
+      replyTo: email,
+      subject: `DocuMind AI Support: Query from ${fullName}`,
+      text: `New contact submission:\n\nName: ${fullName}\nEmail: ${email}\n\nIssue:\n${issue}\n\nCredentials:\n${credentials || "N/A"}`,
+    })
 
     return res.json({ success: true, message: "Email sent successfully" })
   } catch (error: any) {
@@ -826,17 +826,22 @@ app.post("/api/auth/otp", async (req, res) => {
     const expires = Date.now() + 5 * 60 * 1000 // 5 minutes validity
     otpStore.set(email.toLowerCase(), { otp, expires })
 
-    const resendKey = process.env.RESEND_API_KEY
-    if (!resendKey) {
-      // Dev fallback: log OTP to console if Resend key not configured
-      console.log(`[OTP] 📧 Generated OTP ${otp} for ${email} (no RESEND_API_KEY configured — console fallback)`)
+    if (!process.env.EMAIL_PASS) {
+      console.log(`[OTP] 📧 Sent OTP ${otp} to ${email}`)
       return res.json({ success: true, message: "OTP sent" })
     }
 
-    const resend = new Resend(resendKey)
-    const { error: sendError } = await resend.emails.send({
-      from: "DocuMind AI <onboarding@resend.dev>",
-      to: [email],
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: "documindai008@gmail.com",
+        pass: process.env.EMAIL_PASS,
+      },
+    })
+
+    await transporter.sendMail({
+      from: `"DocuMind Security" <documindai008@gmail.com>`,
+      to: email,
       subject: `DocuMind AI: Your Security OTP is ${otp}`,
       html: `
         <div style="font-family: sans-serif; max-width: 480px; margin: auto; padding: 24px; border: 1px solid #ddd; border-radius: 12px;">
@@ -853,14 +858,7 @@ app.post("/api/auth/otp", async (req, res) => {
       `,
     })
 
-    if (sendError) {
-      console.error("[OTP] Resend error:", sendError)
-      // Still return success — OTP is stored, user can contact support
-      console.log(`[OTP] 📧 Resend failed but OTP generated: ${otp} for ${email}`)
-      return res.status(500).json({ error: "Failed to send OTP email. Please try again.", details: sendError.message })
-    }
-
-    console.log(`[OTP] 📧 Sent OTP to ${email} via Resend`)
+    console.log(`[OTP] 📧 Sent OTP ${otp} to ${email}`)
     return res.json({ success: true, message: "OTP Email Sent!" })
   } catch (error: any) {
     console.error("OTP email sending error:", error)

@@ -772,20 +772,91 @@ app.post("/api/queries", async (req, res) => {
   }
 })
 
-// --- 7. CONTACT SUPPORT ROUTE ---
-app.post("/api/contact", async (req, res) => {
-  try {
-    const { fullName, email, issue, credentials } = req.body
+// --- SYSTEM EMAIL SENDER (HTTP-based for cloud compatibility + SMTP fallback) ---
+async function sendSystemEmail({
+  to,
+  subject,
+  html,
+  text,
+  fromName,
+  replyTo
+}: {
+  to: string
+  subject: string
+  html?: string
+  text?: string
+  fromName: string
+  replyTo?: string
+}) {
+  // 1. Try Resend HTTP API if RESEND_API_KEY is configured
+  if (process.env.RESEND_API_KEY) {
+    console.log(`[Email] Sending via Resend API to ${to}...`)
+    const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev"
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.RESEND_API_KEY}`
+        },
+        body: JSON.stringify({
+          from: `${fromName} <${fromEmail}>`,
+          to: [to],
+          subject: subject,
+          html: html || text,
+          reply_to: replyTo
+        })
+      })
 
-    if (!fullName || !email || !issue) {
-      return res.status(400).json({ error: "Missing required fields" })
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error("[Email] Resend API error:", errorData)
+        throw new Error(`Resend API response status ${response.status}: ${JSON.stringify(errorData)}`)
+      }
+
+      console.log(`[Email] Sent successfully via Resend to ${to}`)
+      return { success: true, provider: "resend" }
+    } catch (err: any) {
+      console.error("[Email] Resend API fetch failed, falling back if possible...", err)
     }
+  }
 
-    if (!process.env.EMAIL_PASS) {
-      console.log(`[Contact-Form-Submission] Name: ${fullName} | Email: ${email} | Issue: ${issue}`)
-      return res.json({ success: true, message: "Query received" })
+  // 2. Try Brevo (Sendinblue) HTTP API if BREVO_API_KEY is configured
+  if (process.env.BREVO_API_KEY) {
+    console.log(`[Email] Sending via Brevo API to ${to}...`)
+    const fromEmail = process.env.BREVO_FROM_EMAIL || "documindai008@gmail.com"
+    try {
+      const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "api-key": process.env.BREVO_API_KEY
+        },
+        body: JSON.stringify({
+          sender: { name: fromName, email: fromEmail },
+          to: [{ email: to }],
+          replyTo: replyTo ? { email: replyTo } : undefined,
+          subject: subject,
+          htmlContent: html || text?.replace(/\n/g, "<br>")
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error("[Email] Brevo API error:", errorData)
+        throw new Error(`Brevo API response status ${response.status}: ${JSON.stringify(errorData)}`)
+      }
+
+      console.log(`[Email] Sent successfully via Brevo to ${to}`)
+      return { success: true, provider: "brevo" }
+    } catch (err: any) {
+      console.error("[Email] Brevo API fetch failed, falling back if possible...", err)
     }
+  }
 
+  // 3. Fallback to standard Nodemailer SMTP (e.g. Gmail) if EMAIL_PASS is configured
+  if (process.env.EMAIL_PASS) {
+    console.log(`[Email] Sending via Nodemailer SMTP to ${to}...`)
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -795,14 +866,52 @@ app.post("/api/contact", async (req, res) => {
     })
 
     await transporter.sendMail({
-      from: `"DocuMind AI" <documindai008@gmail.com>`,
-      to: "documindai008@gmail.com",
-      replyTo: email,
-      subject: `DocuMind AI Support: Query from ${fullName}`,
-      text: `New contact submission:\n\nName: ${fullName}\nEmail: ${email}\n\nIssue:\n${issue}\n\nCredentials:\n${credentials || "N/A"}`,
+      from: `"${fromName}" <documindai008@gmail.com>`,
+      to: to,
+      replyTo: replyTo,
+      subject: subject,
+      text: text,
+      html: html,
     })
 
-    return res.json({ success: true, message: "Email sent successfully" })
+    console.log(`[Email] Sent successfully via Nodemailer SMTP to ${to}`)
+    return { success: true, provider: "nodemailer" }
+  }
+
+  // 4. No configuration found - Simulate sending for development
+  console.log(`[Email] ⚠️ No email service API keys or credentials configured. Simulated Email:
+  ------------------------------------
+  From Name: ${fromName}
+  To: ${to}
+  Subject: ${subject}
+  Content: ${text || "HTML Content (Check console log for HTML block)"}
+  ------------------------------------`)
+  
+  return { success: true, provider: "none" }
+}
+
+// --- 7. CONTACT SUPPORT ROUTE ---
+app.post("/api/contact", async (req, res) => {
+  try {
+    const { fullName, email, issue, credentials } = req.body
+
+    if (!fullName || !email || !issue) {
+      return res.status(400).json({ error: "Missing required fields" })
+    }
+
+    const result = await sendSystemEmail({
+      to: "documindai008@gmail.com",
+      subject: `DocuMind AI Support: Query from ${fullName}`,
+      text: `New contact submission:\n\nName: ${fullName}\nEmail: ${email}\n\nIssue:\n${issue}\n\nCredentials:\n${credentials || "N/A"}`,
+      fromName: "DocuMind AI",
+      replyTo: email
+    })
+
+    return res.json({ 
+      success: true, 
+      message: result.provider === "none" ? "Query received (simulated)" : "Email sent successfully",
+      provider: result.provider 
+    })
   } catch (error: any) {
     console.error("Contact email error:", error)
     return res.status(500).json({ error: "Failed to send email", details: error.message })
@@ -826,23 +935,10 @@ app.post("/api/auth/otp", async (req, res) => {
     const expires = Date.now() + 5 * 60 * 1000 // 5 minutes validity
     otpStore.set(email.toLowerCase(), { otp, expires })
 
-    if (!process.env.EMAIL_PASS) {
-      console.log(`[OTP] 📧 Sent OTP ${otp} to ${email}`)
-      return res.json({ success: true, message: "OTP sent" })
-    }
-
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: "documindai008@gmail.com",
-        pass: process.env.EMAIL_PASS,
-      },
-    })
-
-    await transporter.sendMail({
-      from: `"DocuMind Security" <documindai008@gmail.com>`,
+    const result = await sendSystemEmail({
       to: email,
       subject: `DocuMind AI: Your Security OTP is ${otp}`,
+      text: `Your DocuMind AI secure access code is: ${otp}. It is valid for 5 minutes.`,
       html: `
         <div style="font-family: sans-serif; max-width: 480px; margin: auto; padding: 24px; border: 1px solid #ddd; border-radius: 12px;">
           <h2 style="color: #2563EB; margin-bottom: 8px;">DocuMind AI Security</h2>
@@ -856,10 +952,15 @@ app.post("/api/auth/otp", async (req, res) => {
           <p style="font-size: 11px; color: #bbb;">&copy; 2026 DocuMind AI &mdash; Tanishk Gupta</p>
         </div>
       `,
+      fromName: "DocuMind Security"
     })
 
-    console.log(`[OTP] 📧 Sent OTP ${otp} to ${email}`)
-    return res.json({ success: true, message: "OTP Email Sent!" })
+    console.log(`[OTP] 📧 Sent OTP ${otp} to ${email} using provider: ${result.provider}`)
+    return res.json({ 
+      success: true, 
+      message: result.provider === "none" ? "OTP sent (simulated)" : "OTP Email Sent!",
+      provider: result.provider
+    })
   } catch (error: any) {
     console.error("OTP email sending error:", error)
     return res.status(500).json({ error: "Failed to send OTP", details: error.message })

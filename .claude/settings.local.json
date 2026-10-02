@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ' *)",
+      "Bash(grep -n \"\\\\[Email\\\\]\\\\|\\\\[OTP\\\\]\\\\|Resend API error\\\\|Brevo API error\" /tmp/documind-backend.log)",
+      "Read(//private/tmp/**)",
+      "Bash(curl -s -X POST http://localhost:5001/api/auth/otp -H \"Content-Type: application/json\" -d '{\"email\":\"someuser.test2@example.com\"}')"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
+}

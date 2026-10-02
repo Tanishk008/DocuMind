@@ -1,0 +1,54 @@
+# Render blueprint for the DocuMind backend (the frontend deploys separately on Vercel).
+#
+# The repo holds two independent apps, so `rootDir` points Render at backend/ only.
+# `npm ci --include=dev` is explicit because the build needs TypeScript from devDependencies,
+# which a production-mode install would otherwise skip.
+#
+# Values are marked `sync: false` so Render prompts for them instead of storing secrets here.
+services:
+  - type: web
+    name: documind-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # Supabase Postgres — use the IPv4 transaction-pooler URL, not the direct db.* host,
+      # which is IPv6-only and unreachable from most hosts.
+      - key: DATABASE_URL
+        sync: false
+      # Supabase Storage — required for figures extracted from PDFs/DOCX. Without these the
+      # text still works, but diagrams are dropped from answers.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_API_KEY_2
+        sync: false
+      - key: GROQ_API_KEY_3
+        sync: false
+      # Optional fallback model provider, tried when Groq is rate-limited.
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      # Email delivery: set EMAIL_PASS (Gmail app password) and/or RESEND_API_KEY.
+      # If none resolve, OTP requests now fail loudly with a 502 instead of silently.
+      - key: EMAIL_PASS
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false

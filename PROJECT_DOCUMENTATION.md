@@ -1,53 +1,85 @@
-# 🧠 DocuMind AI — Complete Technical Master Handbook & Interview Guide
+---
+title: "DocuMind AI — Technical Master Handbook & Interview Dossier"
+date: 2026-10-03
+type: engineering-documentation
+status: complete
+tags:
+  - system-design
+  - rag
+  - graphrag
+  - llm
+  - fullstack
+  - interview-prep
+  - confidential-computing
+  - supabase
+  - nextjs
+aliases:
+  - DocuMind
+  - DocuMind Architecture
+  - GraphRAG System Design
+---
 
-> **Single-File Reference**: This master document contains the complete, end-to-end technical documentation for **DocuMind AI**. It integrates system architectures, Mermaid flowcharts, component deep-dives, file-by-file code maps, PostgreSQL schemas, resume bullet points, behavioral STAR stories, and 25 technical interview questions with model answers.
+# 🧠 DocuMind AI — Technical Master Handbook & Interview Dossier
+
+> [!abstract] Executive Snapshot
+> **DocuMind AI** is an enterprise-grade document intelligence platform designed to ingest dense, multi-modal documents (PDF, DOCX, TXT, scanned images) and provide grounded, multi-hop question answering with zero-hallucination guardrails and confidential computing guarantees.
+> 
+> - **Core Paradigms**: ==GraphRAG== (Knowledge Graph Multi-Hop Traversal), ==Dual-Mode OCR== (JPEG Stream Slicing + Tesseract `eng+hin`), ==Confidential TEE Simulation== (AES-256-GCM + Timing-Safe Auth), ==Multi-Key LLM Routing==.
+> - **Stack**: Next.js 14, TypeScript, Express.js, LangChain, Groq (Llama-3.3 70B, Llama-3.1 8B), PostgreSQL / Supabase, Radix UI, Tailwind CSS.
 
 ---
 
-## 📑 Table of Contents
-1. [Executive Summary & High-Level Specifications](#1-executive-summary--high-level-specifications)
-2. [System Architecture & Visual Flowcharts](#2-system-architecture--visual-flowcharts)
-   - 2.1 [End-to-End System Architecture](#21-end-to-end-system-architecture)
-   - 2.2 [Document Ingestion & Dual OCR Pipeline Flowchart](#22-document-ingestion--dual-ocr-pipeline-flowchart)
-   - 2.3 [GraphRAG Knowledge Graph Pipeline Flowchart](#23-graphrag-knowledge-graph-pipeline-flowchart)
-   - 2.4 [Confidential Computing / TEE Simulation Flowchart](#24-confidential-computing--tee-simulation-flowchart)
-   - 2.5 [Multi-Key LLM Routing & Exponential Backoff Flowchart](#25-multi-key-llm-routing--exponential-backoff-flowchart)
-   - 2.6 [Authentication & Session Lifecycle Flowchart](#26-authentication--session-lifecycle-flowchart)
-3. [Technology Deep-Dive & Engineering Rationale](#3-technology-deep-dive--engineering-rationale)
-   - 3.1 [Document Ingestion, OCR & Font Sanitization](#31-document-ingestion-ocr--font-sanitization)
-   - 3.2 [GraphRAG Engine & Multi-Hop Traversal](#32-graphrag-engine--multi-hop-traversal)
-   - 3.3 [Confidential Computing & TEE Simulation](#33-confidential-computing--tee-simulation)
-   - 3.4 [High-Throughput LLM Routing & Resilience](#34-high-throughput-llm-routing--resilience)
-   - 3.5 [Persistence: PostgreSQL (Supabase) vs. Dedicated Graph DB](#35-persistence-postgresql-supabase-vs-dedicated-graph-db)
-   - 3.6 [Frontend Architecture & Visual Features](#36-frontend-architecture--visual-features)
-4. [Complete Codebase Directory & File Map](#4-complete-codebase-directory--file-map)
-   - 4.1 [Repository Directory Tree](#41-repository-directory-tree)
-   - 4.2 [Backend File Breakdown](#42-backend-file-breakdown)
-   - 4.3 [Frontend File Breakdown](#43-frontend-file-breakdown)
-   - 4.4 [Complete REST API Endpoints Catalog](#44-complete-rest-api-endpoints-catalog)
-5. [Database Schema & Relational Data Models](#5-database-schema--relational-data-models)
-   - 5.1 [Entity-Relationship (ER) Diagram](#51-entity-relationship-er-diagram)
-   - 5.2 [Table DDL, Constraints & Indexes](#52-table-ddl-constraints--indexes)
-   - 5.3 [Database Automation Triggers](#53-database-automation-triggers)
-   - 5.4 [JSONB Knowledge Graph Payloads](#54-jsonb-knowledge-graph-payloads)
-6. [Resume & Interview Preparation Handbook](#6-resume--interview-preparation-handbook)
-   - 6.1 [Resume Bullet Points by Specialization](#61-resume-bullet-points-by-specialization)
-   - 6.2 [Behavioral STAR Interview Stories](#62-behavioral-star-interview-stories)
-   - 6.3 [Top 25 Technical Interview Questions & Model Answers](#63-top-25-technical-interview-questions--model-answers)
+## 📑 Interactive Table of Contents
+
+- [[#1. High-Level Specifications & Tech Matrix]]
+- [[#2. System Architecture & Visual Flowcharts]]
+  - [[#2.1 End-to-End System Architecture]]
+  - [[#2.2 Ingestion & Dual OCR Pipeline]]
+  - [[#2.3 GraphRAG Sequence Diagram]]
+  - [[#2.4 Confidential Computing / TEE Simulation]]
+  - [[#2.5 Multi-Key LLM Routing & Exponential Backoff]]
+  - [[#2.6 Authentication & Session Lifecycle]]
+- [[#3. Technology Deep-Dive & Engineering Rationale]]
+  - [[#3.1 Ingestion, OCR & Krutidev Font Sanitization]]
+  - [[#3.2 GraphRAG vs. Vector RAG Analysis]]
+  - [[#3.3 Confidential Computing & TEE Security]]
+  - [[#3.4 Resilient LLM Routing & Rate Limiting]]
+  - [[#3.5 Database Trade-off: PostgreSQL JSONB vs. Neo4j]]
+  - [[#3.6 Frontend Architecture & Visual Systems]]
+- [[#4. Codebase Directory & File Map]]
+  - [[#4.1 Repository Tree]]
+  - [[#4.2 Backend File Map]]
+  - [[#4.3 Frontend File Map]]
+  - [[#4.4 REST API Endpoints Catalog]]
+- [[#5. Database Schema & Relational Data Models]]
+  - [[#5.1 Entity-Relationship (ER) Diagram]]
+  - [[#5.2 PostgreSQL DDL, Constraints & Indexes]]
+  - [[#5.3 Automated Database Triggers]]
+  - [[#5.4 JSONB Knowledge Graph Payloads]]
+- [[#6. Resume & Interview Preparation Handbook]]
+  - [[#6.1 Resume Bullet Points by Specialization]]
+  - [[#6.2 Behavioral STAR Interview Stories]]
+  - [[#6.3 Top 25 Technical Interview Questions & Collapsible Model Answers]]
 
 ---
 
-## 1. Executive Summary & High-Level Specifications
+## 1. High-Level Specifications & Tech Matrix
 
-**DocuMind AI** is an enterprise-grade document intelligence platform designed to parse dense, multi-modal documents (PDF, DOCX, TXT, scanned images) and provide grounded, multi-hop question answering with zero-hallucination guardrails and confidential computing guarantees.
-
-### Key Specifications
-- **Core AI Paradigms**: Graph-Augmented Retrieval (GraphRAG), Dual-Mode OCR (Tesseract.js `eng+hin`), Multi-Key Tiered Inference.
-- **Frontend**: Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, Radix UI Primitives, HTML5 Canvas.
-- **Backend API**: Node.js, Express.js, TypeScript, LangChain (`@langchain/core`, `@langchain/groq`), Multer.
-- **Inference Hardware**: Groq Cloud Processing Units (LPUs) serving `llama-3.3-70b-versatile`, `llama-3.1-8b-instant`, and `mixtral-8x7b-32768`.
-- **Database & Storage**: PostgreSQL on Supabase (`pg.Pool` connection pooling), JSONB graph storage, and Supabase Object Storage for extracted diagrams.
-- **Security & Enclave**: AES-256-GCM envelope encryption, timing-safe HMAC-SHA256 authentication (`crypto.timingSafeEqual`), and in-memory buffer sanitization.
+| Domain | Technology / Library | Purpose in DocuMind | Key Engineering Trade-off |
+|---|---|---|---|
+| **Frontend Framework** | `Next.js 14` (React 18) | App router, hybrid client/server rendering | Seamless routing, layout caching & SEO |
+| **Language** | `TypeScript` (Strict) | End-to-end type safety | Eliminates runtime type errors across API boundaries |
+| **Styling & UI** | `Tailwind CSS` + `Radix UI` | Accessible, headless primitives with HSL tokens | Rapid dark/light theme switching without CSS bloat |
+| **Visual Effects** | `HTML5 Canvas` | Dynamic particle network simulating knowledge graphs | Lightweight $O(N^2)$ distance canvas rendering |
+| **Backend Runtime** | `Node.js` + `Express.js` | RESTful API and SSE streaming endpoints | High-throughput async non-blocking I/O |
+| **RAG Orchestrator** | `LangChain` | Prompt management, document models, text splitting | Decouples prompts from underlying LLM SDKs |
+| **Inference Engine** | `Groq Cloud LPUs` | Sub-second token generation for 70B & 8B models | ~800 tokens/sec extraction, ~250 tokens/sec synthesis |
+| **Knowledge Graph** | Custom In-Memory BFS + `JSONB` | Multi-hop relational knowledge retrieval | Avoids Neo4j operational overhead for document-scoped graphs |
+| **Digital Parsing** | `pdf-parse` + `mammoth` | Programmatic PDF & Word DOCX text extraction | Native Node execution without headless browser binaries |
+| **OCR Fallback** | `Tesseract.js` (`eng+hin`) | Scanned image & photographed document recognition | Bundles local neural weights to prevent cold-start latency |
+| **Cryptographic TEE**| `Node.js crypto` | AES-256-GCM memory sealing & timing-safe auth | Defense-in-depth against memory-dump and timing attacks |
+| **Database** | `PostgreSQL` (Supabase) | ACID relational persistence & JSONB graph queries | Connection pooling via `pg.Pool` with SSL |
+| **Object Storage** | `Supabase Storage` | Cloud bucket storage for extracted figure diagrams | Persistent public CDN URLs for markdown rendering |
 
 ---
 
@@ -148,7 +180,7 @@ graph TD
 
 ---
 
-### 2.2 Document Ingestion & Dual OCR Pipeline Flowchart
+### 2.2 Ingestion & Dual OCR Pipeline
 
 ```mermaid
 flowchart TD
@@ -196,7 +228,7 @@ flowchart TD
 
 ---
 
-### 2.3 GraphRAG Knowledge Graph Pipeline Flowchart
+### 2.3 GraphRAG Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -242,7 +274,7 @@ sequenceDiagram
 
 ---
 
-### 2.4 Confidential Computing / TEE Simulation Flowchart
+### 2.4 Confidential Computing / TEE Simulation
 
 ```mermaid
 flowchart TD
@@ -299,7 +331,7 @@ flowchart TD
 
 ---
 
-### 2.5 Multi-Key LLM Routing & Exponential Backoff Flowchart
+### 2.5 Multi-Key LLM Routing & Exponential Backoff
 
 ```mermaid
 flowchart TD
@@ -330,7 +362,7 @@ flowchart TD
 
 ---
 
-### 2.6 Authentication & Session Lifecycle Flowchart
+### 2.6 Authentication & Session Lifecycle
 
 ```mermaid
 sequenceDiagram
@@ -377,65 +409,68 @@ sequenceDiagram
 
 ## 3. Technology Deep-Dive & Engineering Rationale
 
-### 3.1 Document Ingestion, OCR & Font Sanitization
-1. **`pdf-parse`**: Employs Mozilla `pdf.js` text layer extraction. Executes directly in Node.js with zero external C++ runtime dependencies.
-2. **`mammoth`**: Converts `.docx` XML DOM structures (`<w:p>`, `<w:t>`) to plain semantic text without layout HTML overhead.
-3. **Zero-Transcode JPEG Stream Slicing**:
-   - Rather than rendering entire PDF pages to high-resolution PNGs with Ghostscript (costing 15+ seconds per page), DocuMind parses the raw buffer for `/Subtype /Image` and `/DCTDecode`.
-   - Extracts raw JPEG streams directly from byte offsets between `stream` and `endstream`, completing in milliseconds.
-4. **Tesseract.js (`eng+hin`)**:
-   - WebAssembly-based OCR engine.
-   - Bundles local pre-trained neural networks (`eng.traineddata` and `hin.traineddata`) inside `backend/` to prevent external network downloads during container cold boots.
-5. **Krutidev Garble Detection Algorithm (`cleanExtractedText`)**:
-   - Legacy Indian fonts store Devanagari glyphs as 8-bit ASCII characters.
-   - The algorithm computes the vowel-to-consonant ratio and matches signature Krutidev prefixes (`vUrxZr`, `ikfydk`, `lkFk`), purging corrupted lines while preserving authentic Unicode Devanagari (`\u0900-\u097F`).
+### 3.1 Ingestion, OCR & Krutidev Font Sanitization
+
+> [!tip] Direct Byte Stream Slicing
+> Rather than rendering PDF pages to high-resolution PNGs with Ghostscript (costing 15+ seconds per page), DocuMind parses the raw buffer for `/Subtype /Image` and `/DCTDecode`. It extracts raw JPEG streams directly from byte offsets between `stream` and `endstream`, completing in **< 10ms per image**.
+
+- **Digital Parsing Gate**: Digital parsing with `pdf-parse` runs first. If fewer than 150 characters are returned (`cleanedPreview.length < 150`), the document is flagged as scanned, triggering OCR.
+- **Tesseract.js Engine**: Uses WebAssembly (WASM). Bundles `eng.traineddata` and `hin.traineddata` locally within the backend repo to eliminate external network requests.
+- **Krutidev Heuristic Filter (`cleanExtractedText`)**:
+  - Legacy Indian fonts store Devanagari glyphs as 8-bit ASCII characters.
+  - The algorithm checks consonant-to-vowel density (`[^\saeiouAEIOU\u0900-\u097F\d.,!?:;"'()\-]{4,}`) and matches signature Krutidev prefixes (`vUrxZr`, `ikfydk`, `lkFk`), purging corrupted lines while preserving authentic Unicode Devanagari (`\u0900-\u097F`).
 
 ---
 
-### 3.2 GraphRAG Engine & Multi-Hop Traversal
+### 3.2 GraphRAG vs. Vector RAG Analysis
 
-#### Why Vector RAG Fails on Relational Queries
-Vector search relies on cosine similarity of text embeddings. If an answer requires connecting facts distributed across non-adjacent pages (e.g., an author on Page 2 and an authorized policy on Page 85), vector search fails because neither chunk independently resembles the query.
+> [!important] Why Standard Vector RAG Fails on Relational Queries
+> Vector search retrieves text chunks based on **cosine similarity of embeddings**. If an answer requires connecting facts distributed across non-adjacent pages (e.g., an author on Page 2 and an authorized policy on Page 85), vector search fails because neither chunk independently matches the user's query.
 
-#### How DocuMind Solves This
-1. **Structured Entity & Relation Extraction**:
-   - Splits text into 3,000-character chunks.
-   - Fast LLM (`llama-3.1-8b-instant`) extracts entities (`nodes`) and relations (`edges`) into strict JSON.
-2. **Consolidation (`consolidateGraphs`)**:
-   - Normalizes IDs and merges duplicate nodes and multi-source edges into an interconnected document graph.
-3. **Seed Entity Extraction**:
-   - When a question arrives, named entities are extracted (`extractSeedEntities`).
-4. **Multi-Hop Breadth-First Search (BFS)**:
-   - Traverses adjacent edges up to `maxHops = 2`, retrieving the connected relational sub-graph.
-5. **Prompt Injection (`formatGraphAsText`)**:
-   - Serializes the sub-graph into natural language and appends it to the prompt context.
+```
+[ Traditional Vector Search ]
+Query: "How does Dr. Sharma's policy impact Supplier X?"
+Vector Match: Retrieves Chunk A (mentions Dr. Sharma) 
+              Misses Chunk C (Supplier X) because it lacks semantic overlap with "Dr. Sharma"
+Result: Incomplete answer or hallucination.
 
----
+[ DocuMind GraphRAG ]
+Query: "How does Dr. Sharma's policy impact Supplier X?"
+Seed Entities: ["Dr. Sharma", "Supplier X"]
+BFS Traversal:
+  [Dr. Sharma] --(AUTHORED)--> [Policy 2024] --(MANDATES)--> [Supplier X]
+Result: Complete multi-hop chain injected directly into LLM context.
+```
 
-### 3.3 Confidential Computing & TEE Simulation
-1. **AES-256-GCM Envelope Encryption**:
-   - 256-bit symmetric cipher in Galois/Counter Mode.
-   - Provides both confidentiality and cryptographic integrity verification via 128-bit authentication tags.
-2. **Constant-Time Signature Validation**:
-   - Mitigates timing side-channel attacks by comparing authentication signatures using `crypto.timingSafeEqual(sigBuf, expectedBuf)` instead of short-circuiting string comparisons.
-3. **Memory Hygiene**:
-   - Volatile buffers and decrypted strings are cleared and garbage-collected immediately after execution to prevent memory-dump extraction.
+- **Extraction**: Splits text into 3,000-character chunks; fast 8B model extracts `{ nodes, edges }` JSON.
+- **Consolidation**: `consolidateGraphs()` normalizes IDs, merges multi-source node descriptions, and deduplicates edges.
+- **Query Resolution**: `retrieveSubGraph()` executes Breadth-First Search (BFS) up to `maxHops = 2` starting from seed entities extracted from the query.
 
 ---
 
-### 3.4 High-Throughput LLM Routing & Resilience
-1. **Decoupled Tiered Models**:
-   - High-volume extraction $\to$ `llama-3.1-8b-instant` (~800 tokens/sec).
-   - Deep reasoning & synthesis $\to$ `llama-3.3-70b-versatile` (~250 tokens/sec).
-2. **Multi-Key Round-Robin Pool**:
-   - Ingests multiple API keys from environment variables and rotates requests sequentially.
-3. **Exponential Backoff with Jitter**:
-   $$\text{Delay} = (2^{\text{attempt}} \times 500\,\text{ms}) + \text{UniformRandom}(0, 200\,\text{ms})$$
-   Mitigates the "thundering herd" problem when retrying after HTTP 429 rate-limit responses.
+### 3.3 Confidential Computing & TEE Security
+
+> [!note] In-Memory Enclave Simulation
+> DocuMind's `TrustedExecutionEnvironment` simulates hardware enclave isolation:
+> 1. **AES-256-GCM Envelope Encryption**: Protects high-value data states using 256-bit symmetric keys with 128-bit authentication tags.
+> 2. **Constant-Time Verification**: Compares authentication signatures using `crypto.timingSafeEqual(sigBuf, expectedBuf)` to defeat timing side-channel attacks.
+> 3. **Memory Scrubbing**: Plaintext buffers and decrypted secrets are zeroized immediately after execution.
 
 ---
 
-### 3.5 Persistence: PostgreSQL (Supabase) vs. Dedicated Graph DB
+### 3.4 Resilient LLM Routing & Rate Limiting
+
+- **Decoupled Tiered Models**:
+  - High-volume extraction $\to$ `llama-3.1-8b-instant` (~800 tokens/sec).
+  - Deep reasoning & synthesis $\to$ `llama-3.3-70b-versatile` (~250 tokens/sec).
+- **Multi-Key Round-Robin Pool**:
+  - Ingests multiple API keys (`GROQ_API_KEY`, `GROQ_API_KEY_2`, etc.) and rotates requests sequentially.
+- **Exponential Backoff with Jitter**:
+  $$\text{Delay} = (2^{\text{attempt}} \times 500\,\text{ms}) + \text{UniformRandom}(0, 200\,\text{ms})$$
+
+---
+
+### 3.5 Database Trade-off: PostgreSQL JSONB vs. Neo4j
 
 | Dimension | PostgreSQL + JSONB (DocuMind) | Dedicated Graph DB (Neo4j) |
 |---|---|---|
@@ -446,17 +481,18 @@ Vector search relies on cosine similarity of text embeddings. If an answer requi
 
 ---
 
-### 3.6 Frontend Architecture & Visual Features
-1. **Next.js 14 App Router**: Hybrid client-server architecture with strict route layouts.
-2. **Interactive Canvas Particles (`particles-background.tsx`)**: Renders an animated particle network simulating knowledge graph topology based on Euclidean distance calculations:
-   $$\alpha = 1 - \frac{d}{\text{threshold}}$$
-3. **Client-Side PDF Generation (`export-pdf.ts`)**: Generates printable dossiers using `jsPDF` and `html2canvas` directly in the browser, eliminating server rendering load.
+### 3.6 Frontend Architecture & Visual Systems
+
+- **Next.js 14 App Router**: Hybrid client-server architecture with strict route layouts.
+- **Interactive Canvas Particles (`particles-background.tsx`)**: Renders an animated particle network simulating knowledge graph topology based on Euclidean distance calculations:
+  $$\alpha = 1 - \frac{d}{\text{threshold}}$$
+- **Client-Side PDF Generation (`export-pdf.ts`)**: Generates printable dossiers using `jsPDF` and `html2canvas` directly in the browser, eliminating server rendering load.
 
 ---
 
-## 4. Complete Codebase Directory & File Map
+## 4. Codebase Directory & File Map
 
-### 4.1 Repository Directory Tree
+### 4.1 Repository Tree
 
 ```
 DocuMind-main/
@@ -514,7 +550,7 @@ DocuMind-main/
 
 ---
 
-### 4.2 Backend File Breakdown
+### 4.2 Backend File Map
 - **`backend/server.ts`**: Express application setup, Multer middleware, multi-key Groq pool rotation, `/api/analyze` pipeline, and auxiliary AI routes (`/api/summarize`, `/api/suggest-questions`, `/api/followup-stream`).
 - **`backend/lib/graphrag.ts`**: Entity/relation extraction prompts, graph deduplication/merging, seed entity identification, and BFS traversal.
 - **`backend/lib/tee.ts`**: AES-256-GCM encryption/decryption, timing-safe session tokens, and cryptographic OTP generation.
@@ -525,7 +561,7 @@ DocuMind-main/
 
 ---
 
-### 4.3 Frontend File Breakdown
+### 4.3 Frontend File Map
 - **`frontend/app/upload/page.tsx`**: File drag-and-drop zone, file validation, automatic summary generation, and tag suggestions.
 - **`frontend/app/query/page.tsx`**: Question input interface with preset templates, answer length toggle (Detailed/Concise), and language selector.
 - **`frontend/app/results/page.tsx`**: Analytical answers, expandable verbatim citations, inline diagram figures, confidence gauges, and PDF/Text export triggers.
@@ -536,7 +572,7 @@ DocuMind-main/
 
 ---
 
-### 4.4 Complete REST API Endpoints Catalog
+### 4.4 REST API Endpoints Catalog
 
 | Method | Endpoint | Description | Request Body / Params | Response |
 |---|---|---|---|---|
@@ -639,7 +675,7 @@ erDiagram
 
 ---
 
-### 5.2 Table DDL, Constraints & Indexes
+### 5.2 PostgreSQL DDL, Constraints & Indexes
 
 ```sql
 create extension if not exists pgcrypto;
@@ -727,7 +763,7 @@ create index if not exists idx_activity_logs_timestamp on activity_logs ("timest
 
 ---
 
-### 5.3 Database Automation Triggers
+### 5.3 Automated Database Triggers
 
 ```sql
 create or replace function set_updated_at()
@@ -751,7 +787,7 @@ create trigger trg_user_documents_updated_at
 
 ### 5.4 JSONB Knowledge Graph Payloads
 
-#### Sample `nodes` JSONB Payload
+#### Sample `nodes` Payload
 ```json
 [
   {
@@ -769,7 +805,7 @@ create trigger trg_user_documents_updated_at
 ]
 ```
 
-#### Sample `edges` JSONB Payload
+#### Sample `edges` Payload
 ```json
 [
   {
@@ -828,102 +864,105 @@ create trigger trg_user_documents_updated_at
 
 ### 6.3 Top 25 Technical Interview Questions & Model Answers
 
+> [!tip] Obsidian Interactive Drawers
+> The interview questions below are formatted as **collapsible Obsidian callouts** (`> [!faq]-`). In Obsidian, click on any question to toggle the answer, allowing you to test your recall during interview prep.
+
 #### Category 1: Retrieval-Augmented Generation & GraphRAG
 
-##### Q1: What is GraphRAG and how does it differ from standard Vector RAG?
+> [!faq]- Q1: What is GraphRAG and how does it differ from standard Vector RAG?
 > **Answer**: Standard Vector RAG divides documents into text chunks, creates high-dimensional vector embeddings, and retrieves chunks via cosine similarity to the user's query. This works well for localized semantic matches, but fails when answering relational, multi-hop questions spanning disparate pages (e.g., "How does Person A's policy affect Company B's supply chain?").  
 > GraphRAG extracts entities (nodes) and explicit relationships (edges) from chunks to build a knowledge graph. At query time, seed entities are extracted from the prompt, and a Breadth-First Search (BFS) explores connected nodes across multiple hops. This relational sub-graph is injected into the prompt alongside text chunks, giving the model structural relational awareness.
 
-##### Q2: How do you extract the knowledge graph from raw text chunks?
+> [!faq]- Q2: How do you extract the knowledge graph from raw text chunks?
 > **Answer**: We use LangChain's `ChatPromptTemplate` coupled with a high-speed model (`llama-3.1-8b-instant`). The prompt instructs the LLM to output a strict JSON structure containing `nodes` (with `id`, `label`, `type`, `description`) and `edges` (with `source`, `target`, `relation`, `description`). We sanitize the output to strip code fences, validate the JSON schema, and run `consolidateGraphs()` to merge nodes and deduplicate relations.
 
-##### Q3: Why did you set the BFS traversal depth to `maxHops = 2`?
+> [!faq]- Q3: Why did you set the BFS traversal depth to maxHops = 2?
 > **Answer**: In graph theory, increasing traversal depth leads to exponential frontier expansion (the "small world" phenomenon). At $H=1$, we only capture immediate neighbors, which may miss indirect connections. At $H=2$, we capture intermediate relationships (e.g., Entity A $\to$ Bridge B $\to$ Entity C) without bloating the context window. Beyond $H=2$, graph density introduces irrelevant nodes that dilute the LLM's attention.
 
-##### Q4: How do you handle hallucinations in generated answers?
+> [!faq]- Q4: How do you handle hallucinations in generated answers?
 > **Answer**: We enforce strict system prompt rules: (1) if the answer is absent from both the context chunks and the knowledge graph, the model must return "This information is not found in the provided document(s)"; (2) every answer must be accompanied by a verbatim 1–2 sentence `citation` from the source text; (3) we compute a confidence score reflecting context coverage.
 
-##### Q5: How do you handle diagrams and visual architectures in documents?
+> [!faq]- Q5: How do you handle diagrams and visual architectures in documents?
 > **Answer**: When documents contain diagrams, we extract the image buffers, store them in Supabase Storage, and match them with nearby captions using regex (`Figure \d+:`). These references are injected into the prompt as Markdown image links (`![caption](url)`). If a user asks to visualize an architecture for which no image exists, the model is instructed to generate a structured ASCII/Unicode box-drawing diagram.
 
 ---
 
 #### Category 2: Ingestion & Multi-Lingual OCR
 
-##### Q6: How does DocuMind decide when to use digital parsing vs. OCR?
+> [!faq]- Q6: How does DocuMind decide when to use digital parsing vs. OCR?
 > **Answer**: Digital parsing with `pdf-parse` is orders of magnitude faster than OCR. DocuMind runs `pdf-parse` first and inspects the character count of the cleaned preview. If fewer than 150 characters are retrieved (`cleanedPreview.length < 150`), the document is determined to be a scanned or photographed PDF, automatically triggering the OCR fallback pipeline.
 
-##### Q7: Why did you extract raw `/DCTDecode` streams instead of rendering PDF pages to images?
+> [!faq]- Q7: Why did you extract raw /DCTDecode streams instead of rendering PDF pages to images?
 > **Answer**: Standard PDF-to-image renderers rely on heavy native binaries like `pdftoppm` or Ghostscript, which introduce security vulnerabilities, large Docker image footprints, and slow CPU rendering times. In scanned PDFs, pages are often already stored internally as JPEG streams. By scanning the PDF buffer directly for `/DCTDecode` and `/Subtype /Image` tokens, we extract raw JPEG buffers with zero transcoding overhead.
 
-##### Q8: How does Tesseract.js handle multi-lingual documents in your application?
+> [!faq]- Q8: How does Tesseract.js handle multi-lingual documents in your application?
 > **Answer**: We configure Tesseract.js with `eng+hin` language models. To eliminate external network requests during initialization on containerized platforms, we bundle pre-trained model files (`eng.traineddata` and `hin.traineddata`) directly within the backend directory.
 
-##### Q9: What is the Krutidev issue, and how does your custom filter solve it?
+> [!faq]- Q9: What is the Krutidev issue, and how does your custom filter solve it?
 > **Answer**: Krutidev is a legacy 8-bit ASCII keyboard font where English keystrokes produce Hindi glyphs in proprietary desktop environments. When extracted as raw text, it yields nonsensical Latin consonant clusters. Our `cleanExtractedText` algorithm checks for high consonant-to-vowel density and signature Krutidev prefixes, purging those corrupted lines while preserving genuine Unicode Devanagari (`\u0900-\u097F`).
 
-##### Q10: How do you parse Microsoft Word (`.docx`) files?
+> [!faq]- Q10: How do you parse Microsoft Word (.docx) files?
 > **Answer**: We use `mammoth`. Since `.docx` files are zipped XML archives, Mammoth extracts raw paragraphs (`<w:p>`) and text elements (`<w:t>`) without generating bloated layout HTML, providing clean semantic text for LLM chunking.
 
 ---
 
 #### Category 3: Security & Confidential Computing (TEE)
 
-##### Q11: What is a Trusted Execution Environment (TEE) and how is it simulated here?
+> [!faq]- Q11: What is a Trusted Execution Environment (TEE) and how is it simulated here?
 > **Answer**: A hardware TEE (like Intel SGX or AWS Nitro Enclaves) provides a hardware-isolated memory enclave where code and data are shielded from host-level inspection. In DocuMind, we simulate this in software: sensitive values are encrypted in memory using AES-256-GCM with a volatile master key, operations occur within dedicated functions, and plaintext buffers are zeroized immediately after execution.
 
-##### Q12: Why did you choose AES-256-GCM over AES-256-CBC?
+> [!faq]- Q12: Why did you choose AES-256-GCM over AES-256-CBC?
 > **Answer**: GCM is an Authenticated Encryption with Associated Data (AEAD) mode. In addition to 256-bit encryption, it generates a 128-bit authentication tag that verifies data integrity. CBC requires separate HMAC authentication (Encrypt-then-MAC); without it, CBC is vulnerable to padding oracle attacks. GCM provides both confidentiality and tamper resistance natively.
 
-##### Q13: Explain the timing attack vulnerability in token validation and how you prevented it.
+> [!faq]- Q13: Explain the timing attack vulnerability in token validation and how you prevented it.
 > **Answer**: Standard string comparisons (`strA === strB`) short-circuit and return `false` upon encountering the first non-matching byte. An attacker measuring response times over thousands of requests can deduce the correct signature character-by-character. We use `crypto.timingSafeEqual`, which evaluates every byte in constant time regardless of where differences occur.
 
-##### Q14: How are passwords hashed and stored?
+> [!faq]- Q14: How are passwords hashed and stored?
 > **Answer**: Passwords are hashed using salted SHA-256 HMAC inside the TEE module (`TEE.secureHash(password, salt)`). Plaintext passwords never touch database storage.
 
-##### Q15: Why implement a custom session token instead of an external JWT library?
+> [!faq]- Q15: Why implement a custom session token instead of an external JWT library?
 > **Answer**: Many external JWT libraries carry significant dependency trees and have historically experienced critical vulnerabilities (such as algorithm confusion attacks where tokens signed with `none` or public keys are accepted). DocuMind implements a minimal, zero-dependency token system using Node's built-in `crypto` library, signing base64url payloads with HMAC-SHA256.
 
 ---
 
 #### Category 4: LLM Optimization & High-Throughput Routing
 
-##### Q16: How do you handle Groq API rate limits in production?
+> [!faq]- Q16: How do you handle Groq API rate limits in production?
 > **Answer**: We maintain a pool of API keys configured via environment variables (`GROQ_API_KEY`, `GROQ_API_KEY_2`, etc.). Requests are distributed across keys using round-robin pointer arithmetic. If a 429 Rate Limit error occurs, the handler intercepts the error, advances the key pointer, applies exponential backoff with randomized jitter ($2^{\text{attempt}} \times 500\text{ms} + \text{jitter}$), and retries up to 3 times before cascading to a fallback model.
 
-##### Q17: Why use two different LLM model sizes in the pipeline?
+> [!faq]- Q17: Why use two different LLM model sizes in the pipeline?
 > **Answer**: Entity and relation extraction is an extraction task that requires schema adherence rather than deep creative reasoning. Running an 8B model (`llama-3.1-8b-instant`) provides ~800 tokens/sec at lower token costs. Final answer synthesis requires deep multi-source cross-referencing and nuanced explanations, which is routed to the 70B model (`llama-3.3-70b-versatile`).
 
-##### Q18: What is Server-Sent Events (SSE) and why use it for the follow-up chat?
+> [!faq]- Q18: What is Server-Sent Events (SSE) and why use it for the follow-up chat?
 > **Answer**: SSE (`/api/followup-stream`) maintains an open HTTP connection over which the server streams generated tokens to the client as they are produced. Compared to WebSockets, SSE operates over standard HTTP/HTTPS, works natively through corporate firewalls, supports automatic client reconnection, and imposes lower connection state overhead for unidirectional LLM token streaming.
 
-##### Q19: What prompt engineering strategies ensure comprehensive answers?
+> [!faq]- Q19: What prompt engineering strategies ensure comprehensive answers?
 > **Answer**: We use strict system prompts that: (1) prohibit single-sentence or superficial answers; (2) mandate multi-paragraph explanations structured with bullet points; (3) require exact verbatim citations; (4) enforce inline rendering of extracted figure diagrams via markdown syntax.
 
-##### Q20: How do you ensure JSON outputs from LLMs are reliable and parseable?
+> [!faq]- Q20: How do you ensure JSON outputs from LLMs are reliable and parseable?
 > **Answer**: Even when instructed to return pure JSON, LLMs occasionally enclose output in markdown code fences (` ```json ... ``` `). In `extractGraphFromChunk`, our code locates the first `{` and last `}` in the string, slices the exact substring, and passes it to `JSON.parse()`. If parsing fails, it safely falls back to an empty graph rather than crashing the request.
 
 ---
 
 #### Category 5: Database Architecture & System Design
 
-##### Q21: Why store Knowledge Graphs in PostgreSQL JSONB instead of a Graph Database?
+> [!faq]- Q21: Why store Knowledge Graphs in PostgreSQL JSONB instead of a Graph Database?
 > **Answer**: DocuMind creates document-scoped knowledge graphs (typically hundreds to thousands of nodes and edges per document). Running a separate graph database (like Neo4j) introduces operational overhead, network latency, and distributed transaction complexity. PostgreSQL `JSONB` allows us to store and index graph topologies within the `user_documents` row, enabling single-query atomic retrieval alongside document metadata.
 
-##### Q22: What indexes did you create in PostgreSQL and why?
+> [!faq]- Q22: What indexes did you create in PostgreSQL and why?
 > **Answer**: We created indexes on high-frequency lookup fields:
 > - `idx_users_email` on `users(email)` for fast auth checks.
 > - `idx_user_documents_email` and `idx_user_documents_doc_id` on `user_documents` for rapid document and graph retrieval.
 > - `idx_share_links_share_id` on `share_links` for $O(\log n)$ public report resolution.
 > - `idx_activity_logs_timestamp` with `DESC` ordering for admin dashboard activity queries.
 
-##### Q23: How does the composite unique constraint `(user_email, name)` improve data integrity?
+> [!faq]- Q23: How does the composite unique constraint (user_email, name) improve data integrity?
 > **Answer**: It ensures that a user cannot upload two documents with the identical filename simultaneously, preventing data collision. It also enables atomic SQL upsert operations (`ON CONFLICT (user_email, name) DO UPDATE`), allowing users to re-upload revised versions of documents and update their knowledge graphs without creating orphan records.
 
-##### Q24: How does the client-side PDF export work without consuming server resources?
+> [!faq]- Q24: How does the client-side PDF export work without consuming server resources?
 > **Answer**: In `export-pdf.ts`, we utilize `jsPDF` and `html2canvas` directly within the client's browser. The script formats the document title, query timestamp, comprehensive answer, citation box, and source badges into a structured document and triggers a client-side download. This offloads compute from the backend API.
 
-##### Q25: How would you scale DocuMind to handle millions of documents?
+> [!faq]- Q25: How would you scale DocuMind to handle millions of documents?
 > **Answer**:
 > 1. **Asynchronous Ingestion with Message Queues**: Transition file ingestion to an asynchronous job queue (e.g., BullMQ with Redis or AWS SQS). The API returns a `job_id`, worker nodes process OCR and GraphRAG in the background, and WebSocket/SSE notifies the client upon completion.
 > 2. **Global Knowledge Graph Linking**: For cross-document enterprise-wide graphs, migrate consolidated topologies to Neo4j or Amazon Neptune, using graph clustering algorithms (e.g., Leiden or Louvain) for community summarization.
